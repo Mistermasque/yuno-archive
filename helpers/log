@@ -1,0 +1,100 @@
+
+LOG_FILE=""
+LOG_QUIET=false
+LOG_VERBOSE=false
+
+
+log_init() {
+    local -A args_array=( [l]=log= [q]=quiet [v]=verbose )
+    local log
+    local quiet
+    local verbose
+    ynh_handle_getopts_args "$@"
+
+    if [[ -n $log ]]; then
+        LOG_FILE=$log
+    fi
+
+    if [[ -n $quiet ]]; then
+        LOG_QUIET=true
+    fi
+
+    if [[ -n $verbose ]]; then
+        LOG_VERBOSE=true
+    fi
+}
+
+### FUNCTION BEGIN
+# Message function
+# Print on stdout/stderr if LOG_QUIET is true (see logQuiet)
+# Print in log file if LOG_FILE is set (see setLogFile)
+# GLOBALS: 
+# 	LOG_FILE
+# ARGUMENTS: 
+#   $1 (string) message to print
+#   $2 message type success|error|critical|warning|verbose|info|<null>
+# OUTPUTS: 
+# 	Writes log to stdout or stderr (if type critical or error)
+### FUNCTION END
+log() {
+    local message="$1"
+    local type="${2-info}"
+    local prefix=''
+    
+    case "${type}" in
+        'success')
+            prefix="[OK] "
+        ;;
+        'error')
+            prefix="[ERROR] "
+        ;;
+        'critical')
+            prefix="[CRITICAL] "
+        ;;
+        'warning')
+            prefix="[WARN] "
+        ;;
+    esac
+
+    local now="$(date "+%Y-%m-%d %H:%M:%S") "
+    local logMsg=$(printf '%s%s%s\n' "$now" "$prefix" "$message")
+    local logDir=$(dirname "$LOG_FILE")
+
+    if [[ $LOG_FILE ]]; then
+        echo "$logMsg" >> "$LOG_FILE"
+    fi
+
+    if [[ $LOG_QUIET ]]; then
+        return 0;
+    fi
+
+    if [[ $type = 'error' || $type = 'critical' ]]; then
+        printf '%s%s\n' "$prefix" "$message" >&2
+    elif [[ $type != 'verbose' ]]; then
+        printf '%s%s\n' "$prefix" "$message"
+    fi
+}
+
+log_cmd() {
+    if [[ -n "$LOG_FILE" ]]; then
+        "$@" >> $LOG_FILE 2>&1
+    else
+        $@
+    fi
+    return $?
+}
+
+### FUNCTION BEGIN
+# Abort script. Used for critical error (coding error)
+# exit script with 127 return code
+# ARGUMENTS: 
+# 	$1 (string) message to print
+# OUTPUTS: 
+# 	Call log to print message
+# RETURNS:
+#   exit script with 127 code
+### FUNCTION END
+abord_critical() {
+    yeb_log "$1" critical
+    exit 127
+}
