@@ -24,7 +24,8 @@ init_method() {
         abord "repository is required"
     fi
 
-    repository=$(clean_trailing_slash "$repository")
+    repository="${repository%/}" # Clean trailing slash
+
 
     if [[ ! -d "$repository" ]]; then
         if ! mkdir -p "$repository"; then
@@ -243,7 +244,7 @@ fetch_from_dest() {
         abord "destination is required"
     fi
 
-    destination=$(clean_trailing_slash "$destination")
+    destination="${destination%/}" # Clean trailing slash
 
     if [[ ! -d "$destination" ]]; then
         abord "Destination '$destination' doesn't exists or innaccessible"

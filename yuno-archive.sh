@@ -206,7 +206,7 @@ do_backup() {
         exit 1
     fi
 
-    source=$(clean_trailing_slash "$source")
+    source="${source%/}" # Clean trailing slash
 
     if [[ ! -f $source && ! -d $source ]]; then
         abord "source '$source' is not a file, a directory or is not accessible"
@@ -412,8 +412,8 @@ do_restore() {
 
     local list
     list=$(list_archives)
-    if ! echo "$list" | grep -qv "$name"; then
-        abord "Archive '$name' not found'"
+    if ! echo "$list" | grep -q "$name"; then
+        abord "Archive '$name' not found"
     fi
 
     log "Fetching archive..." info

@@ -73,7 +73,7 @@ init_method() {
         abord "drive is required"
     fi
 
-    drive=$(clean_trailing_slash "$drive")
+    drive="${drive%/}" # Clean trailing slash
 
     if [[ -L "$drive" ]]; then
         drive=$(readlink -f "$drive")
@@ -84,7 +84,7 @@ init_method() {
     fi
 
     DRIVE_DEST="$drive"
-    DRIVE_SUBDIR=$(clean_trailing_slash "$repository")
+    DRIVE_SUBDIR=${repository%/} # Clean trailing slash
 
     _mount_drive || return 1
 
@@ -114,7 +114,7 @@ cleanup_method() {
     local busy=true
     local cpt=0
 
-    if mount | grep -qv "${DRIVE_DEST}"; then
+    if ! mount | grep -q "${DRIVE_DEST}"; then
         log "Drive '${DRIVE_DEST}' not mounted, nothing to do" verbose
         return 0
     fi
@@ -356,7 +356,7 @@ fetch_from_dest() {
         abord "destination is required"
     fi
 
-    destination=$(clean_trailing_slash "$destination")
+    destination="${destination%/}" # Clean trailing slash
 
     if [[ ! -d "$destination" ]]; then
         abord "Destination '$destination' doesn't exists or innaccessible"

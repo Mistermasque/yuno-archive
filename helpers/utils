@@ -72,19 +72,3 @@ abord() {
     cleanup
     exit $exit_code
 }
-
-### FUNCTION BEGIN
-# Clean training slashes
-# ARGUMENTS: 
-# 	$1 (string) value to clean
-# OUTPUTS: 
-# 	print cleaned value on stdout
-# RETURNS:
-### FUNCTION END
-clean_trailing_slash() {
-    local dir="$1"
-    shopt -s extglob
-    dir="${dir%%+(/)}"
-    shopt -u extglob
-    echo "$dir"
-}
