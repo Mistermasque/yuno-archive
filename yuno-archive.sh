@@ -368,6 +368,8 @@ do_list() {
     init_method "${ARGS[@]}"
 
     list_archives --sort="$sort"
+    cleanup
+    return 0
 }
 
 do_help() {
@@ -375,6 +377,7 @@ do_help() {
     if [[ -n $METHOD ]]; then
         load_method "$METHOD"
         usage_method
+        cleanup
     fi
     exit 0
 }

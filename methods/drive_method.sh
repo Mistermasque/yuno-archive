@@ -192,11 +192,19 @@ list_archives() {
     if [[ -n $sort ]]; then
         case $sort in
         olderfirst | o)
-            find "$DRIVE_REPO" -type f -name "*.tar*" -printf "%T@ %f\n" | sort --numeric-sort --reverse | sed "s/\.tar.*$//" | sed "s/^[0-9][0-9\.]* //" | uniq
+            find "$DRIVE_REPO" -maxdepth 1 -type f -name "*.tar*" -printf "%T@ %f\n" \
+            | sort --numeric-sort \
+            | sed "s/\.tar.*$//" \
+            | sed "s/^[0-9][0-9\.]* //" \
+            | uniq
             return 0
             ;;
         newerfirst | n)
-            find "$DRIVE_REPO" -type f -name "*.tar*" -printf "%T@ %f\n" | sort --numeric-sort | sed "s/\.tar.*$//" | sed "s/^[0-9][0-9\.]* //" | uniq
+            find "$DRIVE_REPO" -maxdepth 1 -type f -name "*.tar*" -printf "%T@ %f\n" \
+            | sort --numeric-sort --reverse \
+            | sed "s/\.tar.*$//" \
+            | sed "s/^[0-9][0-9\.]* //" \
+            | uniq
             return 0
             ;;
         *)
@@ -205,7 +213,7 @@ list_archives() {
         esac
     fi
 
-    find "$DRIVE_REPO" -type f -name "*.tar*" -printf "%T@ %f\n" | sed "s/\.tar.*$//" | sed "s/^[0-9][0-9\.]* //" | uniq
+    find "$DRIVE_REPO" -maxdepth 1 -type f -name "*.tar*" -printf "%f\n" | sed "s/\.tar.*$//" | uniq
     return 0
 }
 

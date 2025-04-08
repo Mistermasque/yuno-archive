@@ -71,11 +71,19 @@ list_archives() {
     if [[ -n $sort ]]; then
         case $sort in
         olderfirst | o)
-            find "$LOCAL_REPO" -type f -name "*.tar*" -printf "%T@ %f\n" | sort --numeric-sort --reverse | sed "s/\.tar.*$//" | sed "s/^[0-9][0-9\.]* //" | uniq
+            find "$LOCAL_REPO" -maxdepth 1 -type f -name "*.tar*" -printf "%T@ %f\n" \
+            | sort --numeric-sort \
+            | sed "s/\.tar.*$//" \
+            | sed "s/^[0-9][0-9\.]* //" \
+            | uniq
             return 0
             ;;
         newerfirst | n)
-            find "$LOCAL_REPO" -type f -name "*.tar*" -printf "%T@ %f\n" | sort --numeric-sort | sed "s/\.tar.*$//" | sed "s/^[0-9][0-9\.]* //" | uniq
+            find "$LOCAL_REPO" -maxdepth 1 -type f -name "*.tar*" -printf "%T@ %f\n" \
+            | sort --numeric-sort --reverse \
+            | sed "s/\.tar.*$//" \
+            | sed "s/^[0-9][0-9\.]* //" \
+            | uniq
             return 0
             ;;
         *)
@@ -84,7 +92,7 @@ list_archives() {
         esac
     fi
 
-    find "$LOCAL_REPO" -type f -name "*.tar*" -printf "%T@ %f\n" | sed "s/\.tar.*$//" | sed "s/^[0-9][0-9\.]* //" | uniq
+    find "$LOCAL_REPO" -maxdepth 1 -type f -name "*.tar*" -printf "%f\n" | sed "s/\.tar.*$//" | uniq
     return 0
 }
 
@@ -161,6 +169,7 @@ send_to_dest() {
 #   0 on success, 1 otherwise
 ### FUNCTION END
 cleanup_method() {
+
     return 0
 }
 
