@@ -28,17 +28,17 @@
 #     local arg1
 #     local arg2
 #     local arg3
-#     ynh_handle_getopts_args "$@"
+#     handle_getopts_args "$@"
 #
 #     [...]
 # }
 # my_helper --arg1 "val1" -b val2 -c
 #
-# usage: ynh_handle_getopts_args "$@"
+# usage: handle_getopts_args "$@"
 # | arg: $@    - Simply "$@" to tranfert all the positionnal arguments to the function
 #
 # This helper need an array, named "args_array" with all the arguments used by the helper
-# that want to use ynh_handle_getopts_args
+# that want to use handle_getopts_args
 # Be carreful, this array has to be an associative array, as the following example:
 # local -A args_array=( [a]=arg1 [b]=arg2= [c]=arg3 )
 # Let's explain this array:
@@ -63,7 +63,7 @@
 # e.g. for `my_helper "val1" val2`, arg1 will be filled with val1, and arg2 with val2.
 #
 # Requires YunoHost version 3.2.2 or higher.
-ynh_handle_getopts_args() {
+handle_getopts_args() {
     # Trick to only re-enable debugging if it was set before
     local xtrace_enable=$(set +o | grep xtrace)
 
@@ -117,9 +117,12 @@ ynh_handle_getopts_args() {
                 getopts ":$getopts_parameters" parameter || true
 
                 if [ "$parameter" = "?" ]; then
-                    ynh_die --message="Invalid argument: -${OPTARG:-}"
+                    # invalid args are simply ignored
+                    shift
+                    continue
+                    # abord "Invalid argument: -${OPTARG:-}"
                 elif [ "$parameter" = ":" ]; then
-                    ynh_die --message="-$OPTARG parameter requires an argument."
+                    abord "-$OPTARG parameter requires an argument."
                 else
                     local shift_value=1
                     # Use the long option, corresponding to the short option read by getopts, as a variable
@@ -145,7 +148,7 @@ ynh_handle_getopts_args() {
 
                             # At this point, if all_args[0] start with "-", then the argument is not well formed
                             if [ "${all_args[0]:0:1}" == "-" ]; then
-                                ynh_die --message="Argument \"${all_args[0]}\" not valid! Did you use a single \"-\" instead of two?"
+                                abord "Argument \"${all_args[0]}\" not valid! Did you use a single \"-\" instead of two?"
                             fi
                             # Reduce the value of shift, because the option has been removed manually
                             shift_value=$((shift_value - 1))
@@ -209,7 +212,7 @@ ynh_handle_getopts_args() {
                 # Get the option_flag from getopts_parameters, by using the option_flag according to the position of the argument.
                 option_flag=${getopts_parameters:$i:1}
                 if [ -z "$option_flag" ]; then
-                    ynh_print_warn --message="Too many arguments ! \"${arguments[$i]}\" will be ignored."
+                    log "Too many arguments ! \"${arguments[$i]}\" will be ignored." warning
                     continue
                 fi
                 # Use the long option, corresponding to the option_flag, as a variable
@@ -231,3 +234,4 @@ ynh_handle_getopts_args() {
     fi
     eval "$xtrace_enable"
 }
+

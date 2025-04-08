@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+
+# Set to true if cleaning process
+declare CLEANING_UP=false
+
+### FUNCTION BEGIN
+# Convert size in bytes in human readable size KiB, MiB, GiB...
+# ARGUMENTS: 
+# 	$1 (integer) value in bytes
+# OUTPUTS: 
+# 	Prints value to stdout
+### FUNCTION END
+hrb() {
+    local bytes="$1"
+    numfmt --to=iec-i --suffix=O --format="%9.2f" "$bytes" | sed s/' '//g
+}
+
+
+### FUNCTION BEGIN
+# Convert size in human readable size KiO, MiO, GiO to size in bytes numerical ...
+# ARGUMENTS: 
+# 	$1 (string) size in bytes , kiB, ...
+# OUTPUTS: 
+# 	Writes String to STDOUT
+### FUNCTION END
+bhr() {
+    local humanBytes="${1//\./,}i"
+
+    numfmt --from=iec-i "$humanBytes"
+}
+
+
+### FUNCTION BEGIN
+# launch cleanup process
+# GLOBALS: 
+# 	CLEANING_UP
+# RETURNS:
+#   0 on sucess, non zero otherwise
+### FUNCTION END
+cleanup() {
+    if $CLEANING_UP; then
+        return 0
+    fi
+    CLEANING_UP=true
+
+    # Delete tmp files
+    rm -rf "$TMP_DIR"
+
+    if [[ $(type -t cleanup_method) == function ]]; then
+        cleanup_method
+        return $?
+    fi
+
+    return 0
+}
+
+
+### FUNCTION BEGIN
+# Exit script with cleaning up correctly
+# ARGUMENTS: 
+# 	$1 (string) message to print
+#   $2 (integer-optionnal) return code if not use 1 value
+# OUTPUTS: 
+# 	Call log to print message
+# RETURNS:
+#   exit script with $2 code
+### FUNCTION END
+abord() {
+    local message=$1
+    local -i exit_code=${2:-1}
+    log "$message" error
+    cleanup
+    exit $exit_code
+}
+
+### FUNCTION BEGIN
+# Clean training slashes
+# ARGUMENTS: 
+# 	$1 (string) value to clean
+# OUTPUTS: 
+# 	print cleaned value on stdout
+# RETURNS:
+### FUNCTION END
+clean_trailing_slash() {
+    local dir="$1"
+    shopt -s extglob
+    dir="${dir%%+(/)}"
+    shopt -u extglob
+    echo "$dir"
+}

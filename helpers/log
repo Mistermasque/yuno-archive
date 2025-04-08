@@ -1,25 +1,33 @@
+#!/usr/bin/env bash
 
+# Contain log file path. If not defined, no log wil be printed inside file
 LOG_FILE=""
+# If quiet, no messages will be print on screen (but will be print inside log file)
 LOG_QUIET=false
+# If verbose, all messages will be printed
 LOG_VERBOSE=false
 
 
 log_init() {
+    # shellcheck disable=SC2034
     local -A args_array=( [l]=log= [q]=quiet [v]=verbose )
-    local log
-    local quiet
-    local verbose
-    ynh_handle_getopts_args "$@"
+    local log=""
+    local quiet=0
+    local verbose=0
+    handle_getopts_args "$@"
 
     if [[ -n $log ]]; then
-        LOG_FILE=$log
+        LOG_FILE=$(realpath "${log}")
+        local log_dir
+        log_dir=$(dirname "$LOG_FILE")
+        mkdir -p "$log_dir"
     fi
 
-    if [[ -n $quiet ]]; then
+    if [[ $quiet == 1 ]]; then
         LOG_QUIET=true
     fi
 
-    if [[ -n $verbose ]]; then
+    if [[ $verbose == 1 ]]; then
         LOG_VERBOSE=true
     fi
 }
@@ -32,69 +40,84 @@ log_init() {
 # 	LOG_FILE
 # ARGUMENTS: 
 #   $1 (string) message to print
-#   $2 message type success|error|critical|warning|verbose|info|<null>
+#   $2 message type success|error|warning|verbose|info|<null>
 # OUTPUTS: 
-# 	Writes log to stdout or stderr (if type critical or error)
+# 	Writes log to stdout or stderr (if type error)
 ### FUNCTION END
 log() {
     local message="$1"
     local type="${2-info}"
-    local prefix=''
+    local log_prefix=''
+    local screen_prefix=''
+    local screen_color='\e[0m'
+    local screen_reset_color='\e[0m'
     
     case "${type}" in
         'success')
-            prefix="[OK] "
+            log_prefix="[OK] "
+            screen_prefix="✅ "
+            # green
+            screen_color="\e[32m"
         ;;
         'error')
-            prefix="[ERROR] "
-        ;;
-        'critical')
-            prefix="[CRITICAL] "
+            log_prefix="[ERROR] "
+            screen_prefix="❌ "
+            # red
+            screen_color="\e[31m"
         ;;
         'warning')
-            prefix="[WARN] "
+            log_prefix="[WARN] "
+            screen_prefix="⚠️  "
+            # brown
+            screen_color="\e[33m"
+        ;;
+        'info')
+            log_prefix="[INFO] "
+            # Light blue
+            screen_color="\e[36m"
         ;;
     esac
 
-    local now="$(date "+%Y-%m-%d %H:%M:%S") "
-    local logMsg=$(printf '%s%s%s\n' "$now" "$prefix" "$message")
-    local logDir=$(dirname "$LOG_FILE")
+    local now
+    now="$(date "+%Y-%m-%d %H:%M:%S") "
+    local log_msg
+    log_msg=$(printf '%s%s%s\n' "$now" "$log_prefix" "$message")
 
-    if [[ $LOG_FILE ]]; then
-        echo "$logMsg" >> "$LOG_FILE"
+    if [[ $type == 'verbose' && $LOG_VERBOSE == false ]]; then
+        return 0
     fi
 
-    if [[ $LOG_QUIET ]]; then
-        return 0;
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "$log_msg" >> "$LOG_FILE"
     fi
 
-    if [[ $type = 'error' || $type = 'critical' ]]; then
-        printf '%s%s\n' "$prefix" "$message" >&2
-    elif [[ $type != 'verbose' ]]; then
-        printf '%s%s\n' "$prefix" "$message"
+    if $LOG_QUIET; then
+        return 0
+    fi
+
+    if [[ $type == 'error' ]]; then
+        echo -e "${screen_prefix}${screen_color}${message}${screen_reset_color}" >&2
+    else
+        echo -e "${screen_prefix}${screen_color}${message}${screen_reset_color}"
     fi
 }
 
 log_cmd() {
+    log "$*" verbose
     if [[ -n "$LOG_FILE" ]]; then
-        "$@" >> $LOG_FILE 2>&1
+        if $LOG_QUIET; then
+            "$@" >> "$LOG_FILE" 2>&1
+        else
+            "$@" | tee -a "$LOG_FILE" 2>&1
+        fi
     else
-        $@
+        if $LOG_QUIET; then
+            "$@" >> /dev/null 2>&1
+        else
+            "$@"
+        fi
     fi
     return $?
 }
 
-### FUNCTION BEGIN
-# Abort script. Used for critical error (coding error)
-# exit script with 127 return code
-# ARGUMENTS: 
-# 	$1 (string) message to print
-# OUTPUTS: 
-# 	Call log to print message
-# RETURNS:
-#   exit script with 127 code
-### FUNCTION END
-abord_critical() {
-    yeb_log "$1" critical
-    exit 127
-}
+
