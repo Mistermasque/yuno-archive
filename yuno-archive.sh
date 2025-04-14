@@ -2,10 +2,6 @@
 # Fail on error
 set -Eeuo pipefail
 
-source "./helpers/log"
-source "./helpers/getopts"
-source "./helpers/utils"
-
 ###############################################################################
 #                             INIT GLOBAL VARS                                #
 ###############################################################################
@@ -23,6 +19,14 @@ declare -r TMP_DIR=$(mktemp -d)
 
 # Files to transfert (before they will be tranfered)
 declare -a FILES_TO_TRANSFERT=()
+
+###############################################################################
+#                               LOAD HELPERS                                  #
+###############################################################################
+
+source "${ROOT_DIR}/helpers/log"
+source "${ROOT_DIR}/helpers/getopts"
+source "${ROOT_DIR}/helpers/utils"
 
 ###############################################################################
 #                             SCRIPT FUNCTIONS                                #
