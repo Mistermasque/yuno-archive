@@ -145,7 +145,7 @@ check_space_and_prune_old_archives() {
     local -A args_array=([s]=space=  [k]=keep=)
     local space=0
     local keep=0
-    handle_getopts_args "$args"
+    handle_getopts_args "$@"
 
     if echo "$space" | grep -qv "^[0-9][0-9]*$"; then
         abord "check_space_and_prune_old_archives : Archive size '$space' is not an integer"
