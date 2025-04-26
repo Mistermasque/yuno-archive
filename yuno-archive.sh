@@ -245,6 +245,9 @@ do_backup() {
     load_method "$METHOD"
     init_method "${ARGS[@]}"
 
+    log "Start backup '$METHOD'" info
+    log "args ${ARGS[*]}" verbose
+
     # Check info files and copy to tmp dir
     if [[ -n "$info" ]]; then
         log "Getting info files '$info'..." verbose
@@ -323,6 +326,7 @@ do_backup() {
     log "Archive '$name' sent" success
     
     cleanup
+    log "End backup '$METHOD'" info
     return 0
 }
 

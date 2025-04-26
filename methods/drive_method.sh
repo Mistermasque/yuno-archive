@@ -128,7 +128,7 @@ cleanup_method() {
 
     log "Umount drive '${DRIVE_DEST}'..." info
     while $busy; do
-        if mountpoint -q "${DRIVE_DEST}"; then
+        if mountpoint -q "${_mountedDestDir}"; then
             if umount "${DRIVE_DEST}" 2> /dev/null; then
                 busy=false
             else
