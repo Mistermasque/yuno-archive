@@ -46,7 +46,7 @@ log_init() {
 ### FUNCTION END
 log() {
     local message="$1"
-    local type="${2-info}"
+    local type="${2-}"
     local log_prefix=''
     local screen_prefix=''
     local screen_color='\e[0m'

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Destination repository setted in init_method without trailing slashed
-LOCAL_REPO
+LOCAL_REPO=""
 # Setted true after initialisation
 LOCAL_INITED=false
 

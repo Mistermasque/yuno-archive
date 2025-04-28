@@ -130,7 +130,7 @@ cleanup_method() {
         cd "/tmp" || return 1
     fi
 
-    log "Umount drive '${DRIVE_DEST}'..." info
+    log "Umount drive '${DRIVE_DEST}'..." verbose
     while $busy; do
         if mountpoint -q "${_mountedDestDir}"; then
             if umount "${DRIVE_DEST}" 2> /dev/null; then
@@ -149,10 +149,10 @@ cleanup_method() {
     done
 
     if $busy; then
-        log "Unable to umount '${DRIVE_DEST}'" "error"
+        log "Unable to umount '${DRIVE_DEST}'" error
         return 1
     else
-        log "'${DRIVE_DEST}' umounted" "success"
+        log "Drive '${DRIVE_DEST}' umounted" verbose
     fi
 
     rm -rf "${DRIVE_MOUNTPOINT}"

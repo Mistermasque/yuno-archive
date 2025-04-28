@@ -258,6 +258,7 @@ do_backup() {
             file="${file#"${file%%[![:space:]]*}"}" # Trim leading spaces
             file="${file%"${file##*[![:space:]]}"}" # Trim trailing spaces
 
+            log "Add info file '$file' to transfert"
             if [[ ! -f "$file" ]]; then
                 abord "Info file '$file' doesn't exists or is inaccesible"
             fi
@@ -278,21 +279,21 @@ do_backup() {
     fi
 
     # Create md5 content file
-    log "Create md5 content sum file..." info
+    log "Create md5 content sum file"
     find "${source}" -type f -exec md5sum {} \; | sed "s#${source}/##g" > "$md5_content_file"
+    
+    log "Add md5 content file '$md5_content_file' to transfert"
     FILES_TO_TRANSFERT+=("$md5_content_file")
-    log "Md5 file '$md5_content_file' created" success
 
     # Create tar archive
-    log "Create archive file..." info
+    log "Create archive file"
     
     local verbose=""
     [[ "${LOG_VERBOSE:-false}" == "true" ]] && verbose="--verbose"
     if ! log_cmd tar --create --file="${tar_file}" ${compress_cmd} ${verbose} --directory="${source}" .; then
         abord "Cannot create archive '${tar_file}' !"
     fi
-    FILES_TO_TRANSFERT+=("$tar_file")
-
+    
     # Check compression
     if [[ -n $compress ]]; then
         if ! log_cmd "$compress" -t "${tar_file}"; then
@@ -300,30 +301,36 @@ do_backup() {
         fi
     fi
 
-    log "Archive file '${tar_file}' created" success
+    log "Add archive file '${tar_file}' to transfert"
+    FILES_TO_TRANSFERT+=("$tar_file")
 
     # Create md5 file
+    log "Create md5 sum file"
     for file in "${FILES_TO_TRANSFERT[@]}"; do
         md5sum "$file" | sed "s#${TMP_DIR}/##" >> "$md5_file"
     done
+
+    log "Add md5 file '$md5_file' to transfert"
     FILES_TO_TRANSFERT+=("$md5_file")
 
     # Check space and prune old archive if possible
     if [[ $keep != "all" ]]; then
+        log "Check space and prune old archives..."
         local tar_size
         tar_size=$(du --byte "${tar_file}" | cut -f1)
         if ! check_space_and_prune_old_archives --space="$tar_size" --keep=$keep; then
             abord "Not enough space"
         fi
+        log "There is enough space to store new archive" success
     fi
 
     # send archive
-    log "Send archive to repo..." info
+    log "Send archive files to repo..."
     if ! send_to_dest --name="$name" --archive="$tar_file" --md5="$md5_content_file"; then
         abord "Error while sending archive"
     fi
 
-    log "Archive '$name' sent" success
+    log "Archive '$name' files sent" success
     
     cleanup
     log "End backup '$METHOD'" info
