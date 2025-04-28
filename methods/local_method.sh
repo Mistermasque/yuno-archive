@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 # Destination repository setted in init_method without trailing slashed
-declare LOCAL_REPO
+LOCAL_REPO
 # Setted true after initialisation
-declare LOCAL_INITED=false
+LOCAL_INITED=false
 
 # Check if method is inited
 _check_init() {

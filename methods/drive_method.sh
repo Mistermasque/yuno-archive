@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
 # Destination drive setted in init_method without trailing slashed
-declare DRIVE_DEST
+DRIVE_DEST=""
 # Subdirectory for drive
-declare DRIVE_SUBDIR
+DRIVE_SUBDIR=""
 # Drive destination composed by DRIVE_MOINTPOINT/DRIVE_SUBDIR
-declare DRIVE_REPO
+DRIVE_REPO=""
 # Mounted repo for drive
-declare DRIVE_MOUNTPOINT=""
+DRIVE_MOUNTPOINT=""
 # Setted true after initialisation
-declare DRIVE_INITED=false
+DRIVE_INITED=false
 # Check if drive is already mounted before preparation
 DRIVE_ALREADY_MOUNTED=false
 
@@ -105,6 +105,10 @@ init_method() {
 #   0 on success, 1 otherwise
 ### FUNCTION END
 cleanup_method() {
+
+    if ! $DRIVE_INITED; then
+        return 0
+    fi
 
     if $DRIVE_ALREADY_MOUNTED; then
         log "Drive already mounted before, nothing to do" verbose
