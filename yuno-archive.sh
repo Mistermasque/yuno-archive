@@ -157,15 +157,15 @@ check_space_and_prune_old_archives() {
         return 0
     fi
 
-    log "Not enough space on disk (available space = $(hrb "${availableSpace}"). Trying to make room..." "warning"
+    log "Not enough space on destination (available space = $(hrb "${availableSpace}")). Trying to make room..." "warning"
 
     local archives
-    archives=$(list_archives --sort=olderFirst)
+    archives=$(list_archives --sort=olderfirst)
     
     for archive in $archives; do
         backupsCount=$(count_archives)
         if [[ $backupsCount -le $keep ]]; then
-            log "Cannot delete more archives (number to keep = $keep, archives number = $backupsCount)." "error"
+            log "Cannot delete more archives (number to keep = ${keep}, archives number = ${backupsCount})." "error"
             return 1
         fi
 
@@ -183,11 +183,11 @@ check_space_and_prune_old_archives() {
             return 0
         fi
 
-        log "Not enough free space (available space  = $(hrb "${availableSpace}"). Continuing..."
+        log "Not enough free space (available space  = $(hrb "${availableSpace}")). Continuing..."
     done
 
 
-    log "Cannot make enough space on disk" "error"
+    log "Cannot make enough space on destination" "error"
     return 1
 }
 
@@ -319,7 +319,7 @@ do_backup() {
         local tar_size
         tar_size=$(du --byte "${tar_file}" | cut -f1)
         if ! check_space_and_prune_old_archives --space="$tar_size" --keep=$keep; then
-            abord "Not enough space"
+            abord "We cannot proceed due to a lack of space in destination"
         fi
         log "There is enough space to store new archive" success
     fi
