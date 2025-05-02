@@ -37,7 +37,8 @@ _mount_drive() {
     log "Mounting drive '${DRIVE_DEST}'..." verbose
 
     if mount | grep -q "${DRIVE_DEST}"; then
-        DRIVE_MOUNTPOINT=$(mount | grep "${DRIVE_DEST}" | awk "{ print \$3 }")
+        # We keep only first line to avoid multimounted drive return
+        DRIVE_MOUNTPOINT=$(mount | grep "${DRIVE_DEST}" | head -1 | awk "{ print \$3 }")
         DRIVE_ALREADY_MOUNTED=true
         log "Drive '${DRIVE_DEST}' already mounted for dir '${DRIVE_MOUNTPOINT}' !" verbose
     else
