@@ -54,6 +54,9 @@ _mount_drive() {
         abord "Cannot make repository '${DRIVE_MOUNTPOINT}/${DRIVE_SUBDIR}'"
     fi
 
+    # Set destination rights (non blocking)
+    chmod o=rt,u=rwx,g=rx "${DRIVE_MOUNTPOINT}/${DRIVE_SUBDIR}" || true
+
     DRIVE_REPO="${DRIVE_MOUNTPOINT}/${DRIVE_SUBDIR}"
     log "Drive repository '${DRIVE_REPO}' available" verbose
 
