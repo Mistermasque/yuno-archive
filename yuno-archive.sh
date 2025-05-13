@@ -153,6 +153,9 @@ check_space_and_prune_old_archives() {
 
     local availableSpace
     availableSpace=$(get_available_space)
+    if echo "$availableSpace" | grep -qv "^[0-9][0-9]*$"; then
+        abord "check_space_and_prune_old_archives : Cannot determine available space on destination ('$availableSpace' is not an integer)"
+    fi
     if [[ $availableSpace -gt $space ]]; then
         return 0
     fi
