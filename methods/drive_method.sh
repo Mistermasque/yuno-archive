@@ -36,9 +36,9 @@ _mount_drive() {
 
     log "Mounting drive '${DRIVE_DEST}'..." verbose
 
-    if mount | grep -q "${DRIVE_DEST}"; then
+    if findmnt --source "${DRIVE_DEST}" > /dev/null 2>&1; then
         # We keep only first line to avoid multimounted drive return
-        DRIVE_MOUNTPOINT=$(mount | grep "${DRIVE_DEST}" | head -1 | awk "{ print \$3 }")
+        DRIVE_MOUNTPOINT=$(findmnt --source "${DRIVE_DEST}" --uniq --first-only --output TARGET --noheadings)
         DRIVE_ALREADY_MOUNTED=true
         log "Drive '${DRIVE_DEST}' already mounted for dir '${DRIVE_MOUNTPOINT}' !" verbose
     else
@@ -175,9 +175,7 @@ cleanup_method() {
 get_available_space() {
     _check_init
 
-    local mount_point
-    mount_point=$(findmnt -T "$DRIVE_REPO" -o SOURCE -n)
-    df -B1 --output="source,avail" "$mount_point" | awk "{ if (\$1 == \"$mount_point\") { print \$2 } }"
+    findmnt --target "$DRIVE_REPO" --output AVAIL --bytes --noheadings --first-only
 }
 
 ### FUNCTION BEGIN

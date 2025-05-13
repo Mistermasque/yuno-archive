@@ -47,9 +47,7 @@ init_method() {
 get_available_space() {
     _check_init
 
-    local mount_point
-    mount_point=$(findmnt -T "$LOCAL_REPO" -o SOURCE -n)
-    df -B1 --output="source,avail" "$mount_point" | awk "{ if (\$1 == \"$mount_point\") { print \$2 } }"
+    findmnt --target "$LOCAL_REPO" --output AVAIL --bytes --noheadings --first-only
 }
 
 ### FUNCTION BEGIN
