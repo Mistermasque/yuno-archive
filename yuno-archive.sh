@@ -14,8 +14,9 @@ declare -a METHODS
 mapfile -t METHODS < <(find "$ROOT_DIR/methods" -maxdepth 1 -name "*_method.sh" -type f -printf '%f\n' | sed 's/_method.sh//g')
 declare -r METHODS
 
-# shellcheck disable=SC2155
-declare -r TMP_DIR=$(mktemp -d)
+# root temp dir used for creating TMP_DIR
+# Used exported variable if setted
+declare -r YARCH_TMPDIR=${YARCH_TMPDIR-/tmp}
 
 # Files to transfert (before they will be tranfered)
 declare -a FILES_TO_TRANSFERT=()
@@ -71,6 +72,9 @@ Options :
    Restore action options :
       -d |--destination=<dir> : (mandatory) destination dir to restore archive
       -n |--name=<archive name> : (mandatory) archive name to restore
+
+Global variables
+   YARCH_TMPDIR : export this variable to change root temp dir (default /tmp)
 
 USAGE
 }
@@ -480,9 +484,13 @@ do_restore() {
 ###############################################################################
 
 # Check TMP DIR
-if [[ ! -d "$TMP_DIR" ]]; then
-    abord "Temp dir '${TMP_DIR}' inaccessible or inexistent"
+if [[ ! -d "$YARCH_TMPDIR" ]]; then
+    abord "Temp dir '${YARCH_TMPDIR}' inaccessible or inexistent"
 fi
+
+declare TMP_DIR
+TMP_DIR=$(mktemp --directory --tmpdir="$YARCH_TMPDIR")
+declare -r TMP_DIR
 
 # Get action parameter
 if [[ $# -ge 1 ]]; then
