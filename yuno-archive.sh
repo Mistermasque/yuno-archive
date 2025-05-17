@@ -42,40 +42,40 @@ Usage  :
    $(basename "$0") <Action> <Method> [Action options] [Method options]
 
 <Action> :
-   backup : backup a dir to a repo
-   delete : delete a backup on repo
-   help : print help message. If you want help for a method type help <Method>
-   list : list available backups on repo   
-   restore : restore a backup
+   backup : Backup a dir to a repo
+   delete : Delete a backup on repo
+   help : Print help message. If you want help for a method type help <Method>
+   list : List available backups on repo   
+   restore : Restore a backup
 
-<Method> : method to used to send archive. Available methods are :
+<Method> : Method to used to send archive. Available methods are :
 $(for method in "${METHODS[@]}"; do
     echo "   - $method"
 done)
 
 Options :
    General options :
-      -l |--log=<log file> : send messages to <log file>
-      -q |--quiet : do not print messages on stdout/stderr
-      -v |--verbose : be more verbose
+      -l |--log=<log file> : Send messages to <log file>
+      -q |--quiet : Do not print messages on stdout/stderr
+      -v |--verbose : Be more verbose
 
    Backup action options :
-      -c |--compress=<type> : compress archive before send it <type> can be : gzip|bzip2|xz (if type not set, use gzip)
-      -C |--check_size : check if there is enough space in temp dir to create archive (compare source size to available space in root temp dir)
-      -i |--info=<info file> : additionnal file to send with archive (sent unaltered). Possibility to add multiple files separated by spaces
-      -n |--name=<archive name> : archive name. If not set, use datetime
-      -s |--source=<dir> : (mandatory) source dir or files to backup.
-      -k |--keep=all|<number to keep> : (default: all) how many exisiting backup do you want to keep if thereis not enough space on dest (all: do not prune old archives, 0 can prune all archives if necessary)
+      -c |--compress=<type> : Compress archive before send it <type> can be : gzip|bzip2|xz (if type not set, use gzip)
+      -C |--check_size : Check if there is enough space in temp dir to create archive (compare source size to available space in root temp dir)
+      -i |--info=<info file> : Additionnal file to send with archive (sent unaltered). Possibility to add multiple files separated by spaces
+      -n |--name=<archive name> : Archive name. If not set, use datetime
+      -s |--source=<dir> : (mandatory) Source dir or files to backup.
+      -k |--keep=all|<number to keep> : (default: all) How many exisiting backup do you want to keep if thereis not enough space on dest (all: do not prune old archives, 0 can prune all archives if necessary)
 
    List action options :
-      -s |--sort=<sort order> : sort backup list. <sort order> can be : olderfirt|o for older first, n|newerfirst for newer first
+      -s |--sort=<sort order> : Sort backup list. <sort order> can be : olderfirt|o for older first, n|newerfirst for newer first
    
    Restore action options :
-      -d |--destination=<dir> : (mandatory) destination dir to restore archive
-      -n |--name=<archive name> : (mandatory) archive name to restore
+      -D |--destination=<dir> : (mandatory) Destination dir to restore archive
+      -n |--name=<archive name> : (mandatory) Archive name to restore
 
 Global variables
-   YARCH_TMPDIR : export this variable to change root temp dir (default /tmp)
+   YARCH_TMPDIR : Export this variable to change root temp dir (default /tmp)
 
 USAGE
 }
@@ -426,7 +426,7 @@ do_help() {
 }
 
 do_restore() {
-    local -A args_array=([n]=name= [d]=destination=)
+    local -A args_array=([n]=name= [D]=destination=)
     local name=""
     local destination=""
 
