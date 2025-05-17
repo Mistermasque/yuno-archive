@@ -331,7 +331,7 @@ delete_archive() {
 usage_method() {
     cat <<USAGE_METHOD
    Local method options :
-      -d |--drive=<destination drive> : Drive (partition) to store archives (ex: /dev/sdc1)
+      -d |--drive=<destination drive> : (mandatory) Drive (partition) to store archives (ex: /dev/sdc1)
       -r |--repository=<subdir> : Subdirectory of the disk to use for storing the archives (default: backups)
 USAGE_METHOD
 }

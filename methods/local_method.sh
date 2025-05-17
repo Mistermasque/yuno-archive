@@ -212,7 +212,7 @@ delete_archive() {
 usage_method() {
     cat <<USAGE_METHOD
    Local method options :
-      -r |--repository=<destination repository> : Directory to store files
+      -r |--repository=<destination repository> : (mandatory) Directory to store files
 USAGE_METHOD
 }
 
