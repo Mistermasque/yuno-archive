@@ -60,7 +60,7 @@ Options :
       -v |--verbose : be more verbose
 
    Backup action options :
-      -c |--compress=<type> : compress archive before send it <type> can be : gzip|bzip2|xz
+      -c |--compress=<type> : compress archive before send it <type> can be : gzip|bzip2|xz (if type not set, use gzip)
       -C |--check_size : check if there is enough space in temp dir to create archive (compare source size to available space in root temp dir)
       -i |--info=<info file> : additionnal file to send with archive (sent unaltered). Possibility to add multiple files separated by spaces
       -n |--name=<archive name> : archive name. If not set, use datetime
@@ -205,7 +205,7 @@ do_backup() {
     local name
     name=$(date "+%Y-%m-%d_%H-%M-%S")
     local source=""
-    local compress=""
+    local compress=false
     local keep="all"
     local info=""
     local check_size=""
@@ -230,6 +230,13 @@ do_backup() {
     local md5_content_file="${TMP_DIR}/${name}.content.md5"
     local md5_file="${TMP_DIR}/${name}.md5"
     local compress_cmd=""
+
+    # Set default value for compress method
+    if [[ $compress == false ]]; then
+        compress=""
+    elif [[ -z $compress ]]; then
+        compress="gzip"
+    fi
     
     if [[ -n $compress ]]; then
         case "$compress" in
