@@ -1,4 +1,7 @@
-# yuno-archive
+<h1>
+  <img src="./logo.png" width="32px" alt="Logo of Yuno Archive">
+  Yuno Archive
+</h1>
 
 A Bash script to back up directories and send them to a selected repository using `local`, custom mount points (`drive`), or any backend supported by `rclone`. Originally built for YunoHost backups, but works on any Linux environment.
 
