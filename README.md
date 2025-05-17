@@ -87,7 +87,7 @@ Option|Description
 
 Option|Description
 ------|-----------
-`-r`, `--repository=<rclone repository>`| **(Required)** Rclone repository
+`-r`, `--repository=<rclone repository>`| **(Required)** Rclone repository without ':' at the end
 `-p`, `--path=<path>`| Directory in rclone repository (default: /)
 
 ### Example Usage
