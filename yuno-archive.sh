@@ -61,7 +61,8 @@ Options :
 
    Backup action options :
       -c |--compress=<type> : compress archive before send it <type> can be : gzip|bzip2|xz
-      -i |--info=<info file> : Additionnal file to send with archive (sent unaltered). Possibility to add multiple files separated by spaces
+      -C |--check_size : check if there is enough space in temp dir to create archive (compare source size to available space in root temp dir)
+      -i |--info=<info file> : additionnal file to send with archive (sent unaltered). Possibility to add multiple files separated by spaces
       -n |--name=<archive name> : archive name. If not set, use datetime
       -s |--source=<dir> : (mandatory) source dir or files to backup.
       -k |--keep=all|<number to keep> : (default: all) how many exisiting backup do you want to keep if thereis not enough space on dest (all: do not prune old archives, 0 can prune all archives if necessary)
@@ -200,13 +201,14 @@ check_space_and_prune_old_archives() {
 
 
 do_backup() {
-    local -A args_array=([n]=name= [s]=source= [c]=compress= [k]=keep= [i]=info=)
+    local -A args_array=([n]=name= [s]=source= [c]=compress= [k]=keep= [i]=info= [C]=check_size)
     local name
     name=$(date "+%Y-%m-%d_%H-%M-%S")
     local source=""
     local compress=""
     local keep="all"
     local info=""
+    local check_size=""
     handle_getopts_args "${ARGS[@]}"
 
     # Check inputs
@@ -219,7 +221,7 @@ do_backup() {
     source="${source%/}" # Clean trailing slash
 
     if [[ ! -f $source && ! -d $source ]]; then
-        abord "source '$source' is not a file, a directory or is not accessible"
+        abord "Source '$source' is not a file, a directory or is not accessible"
     fi
     
     name=${name//./-}
@@ -228,7 +230,7 @@ do_backup() {
     local md5_content_file="${TMP_DIR}/${name}.content.md5"
     local md5_file="${TMP_DIR}/${name}.md5"
     local compress_cmd=""
-
+    
     if [[ -n $compress ]]; then
         case "$compress" in
         bzip2 | xz | gzip)
@@ -248,6 +250,19 @@ do_backup() {
         exit 1
     fi
 
+    # Check if there is enough space to create archive file
+    if [[ $check_size == '1' ]]; then
+        log "Check source size ('${source}') according to available space in tmp dir ('${TMP_DIR}')..." verbose
+        local source_size
+        local available_space_in_temp
+        source_size=$(du --bytes --total "$source" 2> /dev/null | tail --lines=1 | cut -f1)
+        available_space_in_temp=$(findmnt --target "$source" --output AVAIL --bytes --noheadings --first-only)
+        if [[ $source_size -gt $available_space_in_temp ]]; then
+            abord "Not enough space to create temp archive (space neeeded = $(hrb "${source_size}") available space in temp = $(hrb "${available_space_in_temp}"))"
+        fi
+        log "OK source size = $(hrb "${source_size}") available space = $(hrb "${available_space_in_temp}")" verbose
+    fi
+    
     # Initialisation
     load_method "$METHOD"
     init_method "${ARGS[@]}"
