@@ -47,11 +47,12 @@ Option|Description
 
 Option|Description
 ------|-----------
-`-c`, `--compress=<type>`|Compression type: `gzip`, `bzip2`, `xz`
-`-i`, `--info=<file>`|Attach additional file(s) (space-separated)
+`-c`, `--compress=<type>`| Compression type: `gzip`, `bzip2`, `xz` (if type not set, use gzip)
+`-C`, `--check_size` | Check if there is enough space in temp dir to create archive (compare source size to available space in root temp dir)
+`-i`, `--info=<file>`| Attach additional file(s) (space-separated)
 `-n`, `--name=<archive name>`|Archive name (default: current datetime)
-`-s`, `--source=<dir>`|**(Required)** Source directory or files to back up
-`-k`, `--keep=<number>`|How many backups to keep (default: all). Set value to `all` if you don't want to delete any old archive.
+`-s`, `--source=<dir>`| **(Required)** Source directory or files to back up
+`-k`, `--keep=<number>`| How many backups to keep (default: all). Set value to `all` if you don't want to delete any old archive.
 
 ### List Options
 
@@ -62,14 +63,38 @@ Option|Description
 ### Restore Options
 Option|Description
 ------|-----------
-`-d`, `--destination=<dir>`|**(Required)** Directory to restore backup into
+`-D`, `--destination=<dir>`|**(Required)** Directory to restore backup into
 `-n`, `--name=<archive name>`|**(Required)** Name of the archive to restore
+
+### Methods Options
+
+For each method, you need to add thoses options.
+
+#### Local method
+
+Option|Description
+------|-----------
+`-r`, `--repository=<destination repository>`| **(Required)** Directory to store files
+
+#### Drive method
+
+Option|Description
+------|-----------
+`-d`, `--drive=<destination drive>` | **(Required)** Drive (partition) to store archives (ex: /dev/sdc1)
+`-r`, `--repository=<subdir>`| Subdirectory of the disk to use for storing the archives (default: backups)
+
+#### Rclone method
+
+Option|Description
+------|-----------
+`-r`, `--repository=<rclone repository>`| **(Required)** Rclone repository without ':' at the end
+`-p`, `--path=<path>`| Directory in rclone repository (default: /)
 
 ### Example Usage
 
 Backup /etc/yunohost to a mounted drive with gzip compression:
 ```bash
-./yuno-archive.sh backup drive -source="/etc/yunohost" --compress gzip -n etc_backup
+./yuno-archive.sh backup drive --source="/etc/yunohost" --compress gzip -n etc_backup -d /dev/sdg2
 ```
 List local backups, newest first:
 ```bash
