@@ -28,6 +28,7 @@ yuno-archive.sh <Action> <Method> [Action options] [Method options]
 - `help` – Show help message (or help <Method> for method-specific help)
 - `list` – List available backups
 - `restore` – Restore a backup
+- `version` – Show script version
 
 ### Methods
 
