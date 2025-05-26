@@ -68,7 +68,7 @@ Options :
       -k |--keep=all|<number to keep> : (default: all) How many exisiting backup do you want to keep if thereis not enough space on dest (all: do not prune old archives, 0 can prune all archives if necessary)
 
    List action options :
-      -s |--sort=<sort order> : Sort backup list. <sort order> can be : olderfirt|o for older first, n|newerfirst for newer first
+      -s |--sort=<sort order> : Sort backup list. <sort order> can be : olderfirst|o for older first, n|newerfirst for newer first
    
    Restore action options :
       -D |--destination=<dir> : (mandatory) Destination dir to restore archive
