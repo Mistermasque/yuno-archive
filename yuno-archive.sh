@@ -520,6 +520,7 @@ if [[ $# -ge 1 ]]; then
     shift
 else
     log "Action is required." error
+    cleanup
     usage
     exit 1
 fi
@@ -556,6 +557,9 @@ restore)
     ;;
 
 *)
-    abord "Unkown action '$ACTION'"
+    log "Unkown action '$ACTION'" error
+    cleanup
+    usage
+    exit 1
     ;;
 esac
