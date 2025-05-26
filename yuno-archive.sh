@@ -5,6 +5,9 @@ set -Eeuo pipefail
 ###############################################################################
 #                             INIT GLOBAL VARS                                #
 ###############################################################################
+# Script version
+declare -r VERSION="0.2.0"
+
 # Script dir
 declare ROOT_DIR
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
@@ -47,6 +50,7 @@ Usage  :
    help : Print help message. If you want help for a method type help <Method>
    list : List available backups on repo   
    restore : Restore a backup
+   version : Print version and exit
 
 <Method> : Method to used to send archive. Available methods are :
 $(for method in "${METHODS[@]}"; do
@@ -425,6 +429,12 @@ do_help() {
     exit 0
 }
 
+do_version() {
+    echo "yuno-archive version : ${VERSION}"
+    cleanup
+    exit 0
+}
+
 do_restore() {
     local -A args_array=([n]=name= [D]=destination=)
     local name=""
@@ -554,6 +564,10 @@ list)
 
 restore)
     do_restore
+    ;;
+
+version)
+    do_version
     ;;
 
 *)
