@@ -562,6 +562,9 @@ fi
 
 declare -ra ARGS=("$@")
 
+# Trap interruption to quit properly
+trap handle_sigterm_sigint INT TERM
+
 log_init "$@"
 
 case $ACTION in

@@ -126,3 +126,8 @@ init_hook() {
 
     return 0
 }
+
+
+handle_sigterm_sigint() {
+    abord 'Script interrupted, clean properly'
+}
