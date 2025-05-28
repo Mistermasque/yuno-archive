@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# Example hook file
+
+# Fail on error
+set -Eeuo pipefail
+
+####################################
+# Variables sent to script
+####################################
+declare -r HOOK="$1" # before | after
+declare -r ACTION="$2" # backup | restore
+
+# Do before script stufs
+do_before() {
+    sleep 10
+    echo "Before ${ACTION} script"
+}
+
+# do after script stuf
+do_after() {
+    sleep 10
+    echo "After ${ACTION} script"
+}
+
+case $HOOK in
+before)
+    do_before
+    ;;
+after)
+    do_after
+    ;;
+*)
+    echo "Unknown hook ${HOOK}" >&2
+    exit 1
+    ;;
+esac
+
+exit 0

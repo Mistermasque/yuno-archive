@@ -3,6 +3,12 @@
 # Set to true if cleaning process
 declare CLEANING_UP=false
 
+# Set true if hook script is used
+declare HOOK_USED=false
+# Hook variables setted if hook is used
+declare HOOK_SCRIPT=""
+declare HOOK_ACTION=""
+
 ### FUNCTION BEGIN
 # Convert size in bytes in human readable size KiB, MiB, GiB...
 # ARGUMENTS: 
@@ -25,7 +31,6 @@ hrb() {
 ### FUNCTION END
 bhr() {
     local humanBytes="${1//\./,}i"
-
     numfmt --from=iec-i "$humanBytes"
 }
 
@@ -34,6 +39,7 @@ bhr() {
 # launch cleanup process
 # GLOBALS: 
 # 	CLEANING_UP
+#   HOOK_USED
 # RETURNS:
 #   0 on sucess, non zero otherwise
 ### FUNCTION END
@@ -43,15 +49,30 @@ cleanup() {
     fi
     CLEANING_UP=true
 
+    local error=false
+
     # Delete tmp files
-    rm -rf "$TMP_DIR"
+    rm -rf "${TMP_DIR}"
 
     if [[ $(type -t cleanup_method) == function ]]; then
-        cleanup_method
-        return $?
+        if ! cleanup_method; then
+            log "Error while executing cleanup" error
+            error=true
+        fi
     fi
 
-    return 0
+    if $HOOK_USED; then
+        if ! _launch_hook "${HOOK_SCRIPT}" after "${HOOK_ACTION}"; then
+            log "Error when executing after hook '${HOOK_SCRIPT}'"
+            error=true
+        fi
+    fi
+
+    if $error; then
+        return 1
+    else
+        return 0
+    fi
 }
 
 
@@ -71,4 +92,37 @@ abord() {
     log "$message" error
     cleanup
     exit $exit_code
+}
+
+
+_launch_hook() {
+    local script_file="$1"
+    local hook="$2" # before | after
+    local action="$3" # backup | restore
+
+    if [[ ! -f $script_file || ! -x $script_file  ]]; then
+        abord "Hook file '$script_file' is not an executable file !"
+    fi
+    log "Launch hook ${hook} ${action} '${script_file}'" verbose
+    if ! log_cmd "${script_file}" "${hook}" "${action}" "${ARGS[@]}"; then
+        return 1
+    fi
+}
+
+
+init_hook() {
+    # Avoid calling init_hook multiple times
+    if $HOOK_USED; then
+        return 0
+    fi
+
+    HOOK_SCRIPT="$1"
+    HOOK_ACTION="$2"
+
+    if ! _launch_hook "${HOOK_SCRIPT}" before "${HOOK_ACTION}"; then
+        abord "Error when executing before hook '${HOOK_SCRIPT}'"
+    fi
+    HOOK_USED=true
+
+    return 0
 }

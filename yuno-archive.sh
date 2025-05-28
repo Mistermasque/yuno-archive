@@ -66,6 +66,7 @@ Options :
    Backup action options :
       -c |--compress=<type> : Compress archive before send it <type> can be : gzip|bzip2|xz (if type not set, use gzip)
       -C |--check_size : Check if there is enough space in temp dir to create archive (compare source size to available space in root temp dir)
+      -h |--hook=<script file> : Execute this script file before and after doing backup
       -i |--info=<info file> : Additionnal file to send with archive (sent unaltered). Possibility to add multiple files separated by spaces
       -n |--name=<archive name> : Archive name. If not set, use datetime
       -s |--source=<dir> : (mandatory) Source dir or files to backup.
@@ -76,10 +77,15 @@ Options :
    
    Restore action options :
       -D |--destination=<dir> : (mandatory) Destination dir to restore archive
+      -h |--hook=<script file> : Execute this script file before and after doing restoration
       -n |--name=<archive name> : (mandatory) Archive name to restore
 
 Global variables
    YARCH_TMPDIR : Export this variable to change root temp dir (default /tmp)
+
+Hook file
+    This file as to be an executable bash script. It will be called with this options :
+    {before|after} {backup|restore}  [Action options] [Method options]
 
 USAGE
 }
@@ -203,9 +209,8 @@ check_space_and_prune_old_archives() {
     return 1
 }
 
-
 do_backup() {
-    local -A args_array=([n]=name= [s]=source= [c]=compress= [k]=keep= [i]=info= [C]=check_size)
+    local -A args_array=([n]=name= [s]=source= [c]=compress= [k]=keep= [i]=info= [C]=check_size [h]=hook=)
     local name
     name=$(date "+%Y-%m-%d_%H-%M-%S")
     local source=""
@@ -213,6 +218,7 @@ do_backup() {
     local keep="all"
     local info=""
     local check_size=""
+    local hook=""
     handle_getopts_args "${ARGS[@]}"
 
     # Check inputs
@@ -275,8 +281,13 @@ do_backup() {
     fi
     
     # Initialisation
-    load_method "$METHOD"
+    load_method "${METHOD}"
     init_method "${ARGS[@]}"
+
+    # Use hook script
+    if [[ -n "$hook" ]]; then
+        init_hook "$hook" backup
+    fi
 
     log "Start backup '$METHOD'" info
     log "args ${ARGS[*]}" verbose
@@ -436,9 +447,10 @@ do_version() {
 }
 
 do_restore() {
-    local -A args_array=([n]=name= [D]=destination=)
+    local -A args_array=([n]=name= [D]=destination= [h]=hook=)
     local name=""
     local destination=""
+    local hook=""
 
     handle_getopts_args "${ARGS[@]}"
     
@@ -458,10 +470,15 @@ do_restore() {
     if [[ ! -d $destination ]]; then
         abord "destination '$destination' is not a directory or is not accessible"
     fi
-
+    
     # Initialisation
     load_method "$METHOD"
     init_method "${ARGS[@]}"
+
+    # Use hook script
+    if [[ -n "$hook" ]]; then
+        init_hook "$hook" restore
+    fi
 
     local list
     list=$(list_archives)
