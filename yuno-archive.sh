@@ -370,7 +370,7 @@ do_backup() {
 
     # send archive
     log "Send archive files to repo..."
-    if ! send_to_dest --name="$name" --archive="$tar_file" --md5="$md5_content_file"; then
+    if ! send_to_dest; then
         abord "Error while sending archive"
     fi
 

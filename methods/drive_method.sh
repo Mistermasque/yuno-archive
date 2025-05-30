@@ -239,8 +239,6 @@ count_archives() {
 # GLOBALS:
 # 	FILES_TO_TRANSFERT array of files to transfert to dest
 #   DRIVE_REPO destination dir for archives
-# ARGUMENTS:
-#   -n, --name=<archive name> : mandatory
 # OUTPUTS:
 # 	Logs
 # RETURNS:
@@ -248,16 +246,6 @@ count_archives() {
 ### FUNCTION END
 send_to_dest() {
     _check_init
-
-    # shellcheck disable=SC2034
-    local -A args_array=([n]=name=)
-    local name=""
-    handle_getopts_args "$@"
-
-    if [[ -z "$name" ]]; then
-        log "Archive name is mandatory" error
-        return 1
-    fi
 
     if [[ ${#FILES_TO_TRANSFERT[@]} == 0 ]]; then
         log "No files to transfert" warning
