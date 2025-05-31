@@ -135,7 +135,10 @@ list_archives() {
         '
     )
 
-    # Tri, filtrage, affichage comme dans ta version précédente...
+    if [[ -z "${output}" ]]; then
+        return 1
+    fi
+
     if [[ $sort != false ]]; then
         case $sort in
         olderfirst)

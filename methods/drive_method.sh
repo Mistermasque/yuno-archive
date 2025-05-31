@@ -228,6 +228,10 @@ list_archives() {
     # Delete duplicate names
     output=$(echo "${output}" | awk '!a[$1]++')
 
+    if [[ -z "${output}" ]]; then
+        return 1
+    fi
+
     # Echo only names
     if ! $full; then
         echo "${output}" | cut --fields=1
