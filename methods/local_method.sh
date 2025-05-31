@@ -59,6 +59,8 @@ get_available_space() {
 # $3 : human_readable {true|false} if true print human readable size and date, if false print size in bytes and date as timestamp
 # OUTPUTS:
 # 	Print list
+# RETURNS:
+#   0 on success, 1 if there is no archives
 ### FUNCTION END
 list_archives() {
     _check_init
@@ -136,7 +138,7 @@ list_archives() {
 # 	Print count of archives
 ### FUNCTION END
 count_archives() {
-    list_archives false false false | wc -l  || echo 0
+    list_archives false false false | wc -l || echo 0
 }
 
 ### FUNCTION BEGIN

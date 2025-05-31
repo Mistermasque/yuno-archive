@@ -95,7 +95,7 @@ log() {
         return 0
     fi
 
-    if [[ $type == 'error' ]]; then
+    if [[ $type == 'error' || $type == 'warning' ]]; then
         echo -e "${screen_prefix}${screen_color}${message}${screen_reset_color}" >&2
     else
         echo -e "${screen_prefix}${screen_color}${message}${screen_reset_color}"

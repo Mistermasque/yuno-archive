@@ -464,8 +464,10 @@ do_list() {
     init_method "${ARGS[@]}"
 
     # Ensure that cleanup is called on exit
-    list_archives "$sort" "$full" "$human_readable" || cleanup
-    
+    if ! list_archives "$sort" "$full" "$human_readable"; then
+        log "No archives on remote" warning
+    fi
+
     cleanup
     return 0
 }
