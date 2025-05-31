@@ -463,8 +463,9 @@ do_list() {
     load_method "$METHOD"
     init_method "${ARGS[@]}"
 
-
-    list_archives "$sort" "$full" "$human_readable"
+    # Ensure that cleanup is called on exit
+    list_archives "$sort" "$full" "$human_readable" || cleanup
+    
     cleanup
     return 0
 }

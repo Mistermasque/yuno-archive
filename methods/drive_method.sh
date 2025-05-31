@@ -263,7 +263,7 @@ list_archives() {
 # 	Print count of archives
 ### FUNCTION END
 count_archives() {
-    list_archives false false false | wc -l
+    list_archives false false false | wc -l  || echo 0
 }
 
 ### FUNCTION BEGIN
