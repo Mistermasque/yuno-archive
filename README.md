@@ -25,8 +25,9 @@ yuno-archive.sh <Action> <Method> [Action options] [Method options]
 
 - `backup` – Archive a directory and send it to a repo
 - `delete` – Remove a backup from a repo
-- `help` – Show help message (or help <Method> for method-specific help)
+- `help` – Show help message (or help &lt;Method&gt; for method-specific help)
 - `list` – List available backups
+- `send` - Send archive from a local dir to a remote repo (send as much as possible and delete old remote archives if necessary)
 - `restore` – Restore a backup
 - `version` – Show script version
 
@@ -60,12 +61,21 @@ Option|Description
 Option|Description
 ------|-----------
 `-s`, `--sort=<order>`|Sort order: `olderfirst` / `o`, `newerfirst` / `n`
+`-f`, `--full` | Print result as table with size and date
+`-h`, `--human_readable` | *(only with --full option)* Print size and date as human readable
 
 ### Restore Options
 Option|Description
 ------|-----------
 `-D`, `--destination=<dir>`|**(Required)** Directory to restore backup into
 `-n`, `--name=<archive name>`|**(Required)** Name of the archive to restore
+
+
+### Send Options
+Option|Description
+------|-----------
+`-s`, `--source=<dir>`| **(Required)** Source directory or files to back up
+
 
 ### Methods Options
 
@@ -106,7 +116,11 @@ Restore a backup from rclone to /tmp/restore:
 ./yuno-archive.sh restore rclone -n etc_backup -d /tmp/restore
 ```
 
-## 🧩 Extend with custom methods
+## Contribute
+
+Just create pull request on develop branch.
+
+### 🧩 Extend with custom methods
 
 To support additional storage backends (e.g. FTP, WebDAV), create a new file in methods/ named:
 ```

@@ -63,9 +63,9 @@ get_available_space() {
 list_archives() {
     _check_init
 
-    local sort="$1"
-    local full="$2"
-    local human_readable="$3"
+    local sort="${1:-false}"
+    local full="${2:-false}"
+    local human_readable="${3:-false}"
     local output=""
 
     # Get file list as this format:

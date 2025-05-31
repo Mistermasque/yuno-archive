@@ -45,12 +45,17 @@ Usage  :
    $(basename "$0") <Action> <Method> [Action options] [Method options]
 
 <Action> :
-   backup : Backup a dir to a repo
-   delete : Delete a backup on repo
-   help : Print help message. If you want help for a method type help <Method>
-   list : List available backups on repo   
-   restore : Restore a backup
-   version : Print version and exit
+   backup:  Backup a dir to a repo
+   delete:  Delete a backup on repo
+   help:    Print help message. If you want help for a method type help <Method>
+   list:    List available backups on repo   
+   restore: Restore a backup
+   send:    Send local archives to remote repo
+            It will send all archives that are not already present in the
+            remote repository. It will also check if there is enough space on
+            the remote repository to store the archives and delete as much as
+            necessary.
+   version: Print version and exit
 
 <Method> : Method to used to send archive. Available methods are :
 $(for method in "${METHODS[@]}"; do
@@ -79,6 +84,9 @@ Options :
       -D |--destination=<dir> : (mandatory) Destination dir to restore archive
       -h |--hook=<script file> : Execute this script file before and after doing restoration
       -n |--name=<archive name> : (mandatory) Archive name to restore
+
+   Send action options :
+      -s |--source=<dir> : (mandatory) Source dir to send archives from
 
 Global variables
    YARCH_TMPDIR : Export this variable to change root temp dir (default /tmp)
@@ -178,7 +186,7 @@ check_space_and_prune_old_archives() {
     log "Not enough space on destination (available space = $(hrb "${availableSpace}")). Trying to make room..." "warning"
 
     local archives
-    archives=$(list_archives --sort=olderfirst)
+    archives=$(list_archives olderfirst)
     
     for archive in $archives; do
         backupsCount=$(count_archives)
@@ -559,6 +567,113 @@ do_restore() {
     return 0
 }
 
+do_send() {
+    local -A args_array=([s]=source=)
+    local source=""
+
+    handle_getopts_args "${ARGS[@]}"
+    
+   # Check inputs
+    if [[ -z $source ]]; then
+        log "source is required" error
+        usage
+        exit 1
+    fi
+
+    source="${source%/}" # Clean trailing slash
+
+    if [[ ! -f $source && ! -d $source ]]; then
+        abord "Source '$source' is not a file, a directory or is not accessible"
+    fi
+    
+    # Initialisation
+    load_method "${METHOD}"
+    init_method "${ARGS[@]}"
+
+    log "Start sending '$METHOD'" info
+    log "args ${ARGS[*]}" verbose
+
+    declare -a local_archives
+    mapfile -t local_archives < <( ${BASH_SOURCE[0]} list local --sort=newerfirst --repository="${source}" --full | tail --lines=+2)
+    if [[ ${#local_archives[@]} -eq 0 ]]; then
+        log "No local archives found in '${source}'" warning
+        cleanup
+        return 0
+    fi
+    log "Found ${#local_archives[@]} local archives in '${source}'"
+
+    declare -a remote_archives
+    mapfile -t remote_archives < <( list_archives olderfirst )
+    log "Found ${#remote_archives[@]} remote archives in destination repository"
+
+    declare -a archives_to_send=()
+
+    for archive in "${local_archives[@]}"; do
+        name=$( echo  "${archive}" | cut -f1 )
+        size=$( echo  "${archive}" | cut -f2 )
+        
+        # We stop if local archive exists on remote
+        if  [[ " ${remote_archives[*]} " =~ " ${name} " ]]; then
+            break;
+        fi
+
+        archives_to_send+=("${name}\t${size}")
+    done
+
+    # log "Archives to send:\n $( printf '%s\n' "${my_array[@]} )" verbose
+
+    if [[ ${#archives_to_send[@]} -eq 0 ]]; then
+        log "No archives to send" warning
+        cleanup
+        return 0
+    fi
+
+    local keep=0
+    local cannot_send=false
+
+    for archive in "${archives_to_send[@]}"; do
+        name=$( echo -e "${archive}" | cut -f1 )
+        size=$( echo -e "${archive}" | cut -f2 )
+        
+        # We stop if local archive exists on remote
+        if  [[ " ${remote_archives[*]} " =~ " ${name} " ]]; then
+            break;
+        fi
+
+        log "Check space and prune old archives..."
+        if ! check_space_and_prune_old_archives --space="$size" --keep=$keep; then
+            cannot_send=true
+            log "We cannot proceed due to a lack of space in destination" warning
+            # We continue because we want to send as much as possible archives
+            continue
+        fi
+        log "There is enough space to store new archive" success
+
+        log "Sending archive '$name' to remote..."
+        mapfile -t FILES_TO_TRANSFERT < <(find "${source}" -maxdepth 1 -type f -name "${name}.*")
+        
+        if ! send_to_dest; then
+            log "Error while sending archive" error
+            cannot_send=true
+            continue
+        fi
+        log "Archive '${name}' sent" success
+
+        keep=$((keep + 1))
+    done
+
+    log "End sending '$METHOD' number archives sent = ${keep}" info
+    cleanup
+
+    if $cannot_send; then
+        log "Some archives were not sent" warning
+        return 1
+    else
+        log "All archives sent successfully" success
+        return 0
+    fi
+}
+
 ###############################################################################
 #                                     MAIN                                    #
 ###############################################################################
@@ -615,6 +730,10 @@ list)
 
 restore)
     do_restore
+    ;;
+
+send)
+    do_send
     ;;
 
 version)
