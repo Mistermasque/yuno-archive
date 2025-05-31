@@ -26,7 +26,6 @@ init_method() {
 
     repository="${repository%/}" # Clean trailing slash
 
-
     if [[ ! -d "$repository" ]]; then
         if ! mkdir -p "$repository"; then
             abord "Cannot make repository '$repository'"
@@ -55,55 +54,85 @@ get_available_space() {
 # GLOBALS:
 # 	LOCAL_REPO destination dir for archives
 # ARGUMENTS:
-# -s, --sort=<sort direction> : olderfirt|o for older first,  n|newerfirst for newer first
+# $1 : sort order olderfirt|o for older first,  n|newerfirst for newer first, false for not using it
+# $2 : full {true|false} if true print full list with size and date, if false print only names
+# $3 : human_readable {true|false} if true print human readable size and date, if false print size in bytes and date as timestamp
 # OUTPUTS:
 # 	Print list
 ### FUNCTION END
 list_archives() {
     _check_init
 
-    # shellcheck disable=SC2034
-    local -A args_array=([s]=sort=)
-    local sort=""
-    handle_getopts_args "$@"
+    local sort="$1"
+    local full="$2"
+    local human_readable="$3"
+    local output=""
 
-    if [[ -n $sort ]]; then
+    # Get file list as this format:
+    # name0    1231       1748679466.0759510370
+    # name2    44477885       1748676862.828793055
+    # name1    1254       1748676857.0679573940
+    # name1    684654       174867354.7511667510
+    output=$(
+        find "$LOCAL_REPO" -maxdepth 1 -type f -name "*.tar*" -printf "%f\t%s\t%T@\n" |
+            sed "s/\(^[^\t]*\)\.tar[^\t]*/\1/"
+    )
+
+    # Get file list as this format (ordered by date) :
+    # name1    1254       1748676857.0679573940
+    # name1    684654       174867354.7511667510
+    # name2    44477885       1748676862.828793055
+    # name0    1231       1748679466.0759510370
+    if [[ $sort != false ]]; then
         case $sort in
-        olderfirst | o)
-            find "$LOCAL_REPO" -maxdepth 1 -type f -name "*.tar*" -printf "%T@ %f\n" \
-            | sort --numeric-sort \
-            | sed "s/\.tar.*$//" \
-            | sed "s/^[0-9][0-9\.]* //" \
-            | uniq
-            return 0
+        olderfirst)
+            output=$(
+                echo "${output}" | sort --field-separator=$'\t' --key=3,3
+            )
             ;;
-        newerfirst | n)
-            find "$LOCAL_REPO" -maxdepth 1 -type f -name "*.tar*" -printf "%T@ %f\n" \
-            | sort --numeric-sort --reverse \
-            | sed "s/\.tar.*$//" \
-            | sed "s/^[0-9][0-9\.]* //" \
-            | uniq
-            return 0
-            ;;
-        *)
-            abord "unkown sort order '$sort'"
+        newerfirst)
+            output=$(
+                echo "${output}" | sort --reverse --field-separator=$'\t' --key=3,3
+            )
             ;;
         esac
     fi
 
-    find "$LOCAL_REPO" -maxdepth 1 -type f -name "*.tar*" -printf "%f\n" | sed "s/\.tar.*$//" | uniq
+    # Delete duplicate names
+    output=$(echo "${output}" | awk '!a[$1]++')
+
+    # Echo only names
+    if ! $full; then
+        echo "${output}" | cut --fields=1
+        return 0
+    fi
+
+    if ! $human_readable; then
+        # Echo Tab header
+        printf "Name\tSize\tTimestamp\n"
+        # Echo full output without human readable size
+        echo "${output}"
+        return 0
+    fi
+
+     # Echo Tab header
+    printf "Name\tSize\tDate\n"
+
+    # Echo full output with human readable size
+    while IFS=$'\t' read -r name size date; do
+        printf "%s\t%s\t%s\n" "${name}" "$(hrb "${size}")" "$( date -d "@${date}" )"
+    done <<< "${output}"
+
     return 0
 }
 
 ### FUNCTION BEGIN
 # Get archive count available on repository
-# GLOBALS:
-# 	LOCAL_REPO destination dir for archives
 # OUTPUTS:
-# 	Print value in bytes
+# 	Print count of archives
 ### FUNCTION END
 count_archives() {
-    list_archives "" | wc -l
+    list_archives false false false | wc -l
 }
 
 ### FUNCTION BEGIN
@@ -221,7 +250,7 @@ fetch_from_dest() {
     local name=""
     local destination=""
     handle_getopts_args "$@"
-   
+
     if [[ -z $name ]]; then
         abord "name is required"
     fi

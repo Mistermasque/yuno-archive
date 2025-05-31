@@ -417,15 +417,46 @@ do_delete() {
 }
 
 do_list() {
-    local -A args_array=([s]=sort=)
-    local sort=""
+    local -A args_array=([s]=sort= [f]=full [h]=human_readable)
+    local sort=false
+    local full=false
+    local human_readable=false
     handle_getopts_args "${ARGS[@]}"
+
+    # Check inputs
+    if [[ $sort != false ]]; then
+        case $sort in
+        olderfirst | o)
+            sort="olderfirst"
+            ;;
+        newerfirst | n)
+            sort="newerfirst"
+            ;;
+        *)
+            abord "unkown sort order '$sort'"
+            ;;
+        esac
+    fi
+
+    # Convert input flags to true/false values
+    if [[ $full == "1" ]]; then
+        full=true
+    elif [[ $full == "0" ]]; then
+        full=false
+    fi
+
+    if [[ $human_readable == "1" ]]; then
+        human_readable=true
+    elif [[ $human_readable == "0" ]]; then
+        human_readable=false
+    fi
 
     # Initialisation
     load_method "$METHOD"
     init_method "${ARGS[@]}"
 
-    list_archives --sort="$sort"
+
+    list_archives "$sort" "$full" "$human_readable"
     cleanup
     return 0
 }

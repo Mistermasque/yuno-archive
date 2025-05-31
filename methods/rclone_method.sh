@@ -100,59 +100,81 @@ get_available_space() {
 ### FUNCTION BEGIN
 # List available archives names stored in dest
 # GLOBALS:
-# 	RCLONE_REPO destination dir for archives
+# 	RCLONE_DEST destination dir for archives
 # ARGUMENTS:
-# -s, --sort=<sort direction> : olderfirt|o for older first,  n|newerfirst for newer first
+# $1 : sort order olderfirt|o for older first,  n|newerfirst for newer first, false for not using it
+# $2 : full {true|false} if true print full list with size and date, if false print only names
+# $3 : human_readable {true|false} if true print human readable size and date, if false print size in bytes and date as timestamp
 # OUTPUTS:
 # 	Print list
 ### FUNCTION END
 list_archives() {
     _check_init
 
-    # shellcheck disable=SC2034
-    local -A args_array=([s]=sort=)
-    local sort=""
-    handle_getopts_args "$@"
+    local sort="$1"
+    local full="$2"
+    local human_readable="$3"
+    local output=""
 
-    if [[ -n $sort ]]; then
+    output=$(
+        rclone lsl "${RCLONE_DEST}/" --max-depth 1 --include "*.tar*" 2>/dev/null |
+            awk '
+            NF >= 4 {
+                # $2 = date (YYYY-MM-DD), $3 = time (HH:MM:SS[.sss]), $1 = size, $NF = filename
+                split($3, t, ".")
+                split($2, d, "-")
+                split(t[1], h, ":")
+                # Check if date and time are valid
+                if (length(d) == 3 && length(h) == 3) {
+                    timestamp = mktime(d[1] " " d[2] " " d[3] " " h[1] " " h[2] " " h[3])
+                } else {
+                    timestamp = ""
+                }
+                print $NF "\t" $1 "\t" timestamp
+            }
+        '
+    )
+
+    # Tri, filtrage, affichage comme dans ta version précédente...
+    if [[ $sort != false ]]; then
         case $sort in
-        olderfirst | o)
-            rclone lsl "${RCLONE_DEST}/" --max-depth 1 --include "*.tar*" 2>/dev/null |
-                sed "s/^ *[0-9][0-9]* //" |
-                sort |
-                sed "s/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]* //" |
-                sed "s/\.tar.*$//" |
-                uniq
-            return 0
+        olderfirst)
+            output=$(echo "${output}" | sort --field-separator=$'\t' --key=3,3)
             ;;
-        newerfirst | n)
-            rclone lsl "${RCLONE_DEST}/" --max-depth 1 --include "*.tar*" 2>/dev/null |
-                sed "s/^ *[0-9][0-9]* //" |
-                sort --reverse |
-                sed "s/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]* //" |
-                sed "s/\.tar.*$//" |
-                uniq
-            return 0
-            ;;
-        *)
-            abord "unkown sort order '$sort'"
+        newerfirst)
+            output=$(echo "${output}" | sort --reverse --field-separator=$'\t' --key=3,3)
             ;;
         esac
     fi
 
-    rclone lsf "${RCLONE_DEST}/" --max-depth 1 --include "*.tar*" 2>/dev/null | sed "s/\.tar.*$//" | uniq
+    output=$(echo "${output}" | awk -F $'\t' '!a[$1]++')
+
+    if ! $full; then
+        echo "${output}" | cut --fields=1
+        return 0
+    fi
+
+    if ! $human_readable; then
+        printf "Name\tSize\tTimestamp\n"
+        echo "${output}"
+        return 0
+    fi
+
+    printf "Name\tSize\tDate\n"
+    while IFS=$'\t' read -r name size date; do
+        printf "%s\t%s\t%s\n" "${name}" "$(hrb "${size}")" "$(date -d "@${date}")"
+    done <<<"${output}"
+
     return 0
 }
 
 ### FUNCTION BEGIN
 # Get archive count available on repository
-# GLOBALS:
-# 	RCLONE_REPO destination dir for archives
 # OUTPUTS:
-# 	Print value in bytes
+# 	Print count of archives
 ### FUNCTION END
 count_archives() {
-    list_archives "" | wc -l
+    list_archives false false false | wc -l
 }
 
 ### FUNCTION BEGIN
@@ -321,7 +343,7 @@ fetch_from_dest() {
             log "Unable to transfert '$file'" error
             return 1
         fi
-        
+
         local filename
         filename=$(basename "$file")
 
