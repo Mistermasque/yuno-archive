@@ -6,7 +6,7 @@ set -Eeuo pipefail
 #                             INIT GLOBAL VARS                                #
 ###############################################################################
 # Script version
-declare -r VERSION="0.3.0"
+declare -r VERSION="0.3.1"
 
 # Script dir
 declare ROOT_DIR

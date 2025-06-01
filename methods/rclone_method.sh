@@ -133,8 +133,8 @@ list_archives() {
                     timestamp = ""
                 }
                 print $NF "\t" $1 "\t" timestamp
-            }
-        '
+            }' |
+            sed "s/\(^[^\t]*\)\.tar[^\t]*/\1/"
     )
 
     if [[ -z "${output}" ]]; then
