@@ -18,7 +18,7 @@ declare HOOK_ACTION=""
 ### FUNCTION END
 hrb() {
     local bytes="$1"
-    numfmt --to=iec-i --suffix=O --format="%9.2f" "$bytes" | sed s/' '//g
+    numfmt --to=iec-i --suffix=O --format="%9.2f" "$bytes" | sed s/'^ *\([0-9,\.]*\)\(.*\)'/'\1 \2'/
 }
 
 
