@@ -102,7 +102,7 @@ load_method() {
     local method="$1"
 
     if [[ -z "$method" ]]; then
-        abord "No method provided !" error
+        abord "No method provided !"
     fi
 
     log "Loading method '${method}'..." verbose
