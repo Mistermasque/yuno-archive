@@ -50,7 +50,7 @@ get_available_space() {
 }
 
 ### FUNCTION BEGIN
-# List available archives names stored in dest
+# List available archives names stored in destination
 # GLOBALS:
 # 	LOCAL_REPO destination dir for archives
 # ARGUMENTS:
@@ -58,7 +58,8 @@ get_available_space() {
 # $2 : full {true|false} if true print full list with size and date, if false print only names
 # $3 : human_readable {true|false} if true print human readable size and date, if false print size in bytes and date as timestamp
 # OUTPUTS:
-# 	Print list
+# 	Print list in the format:
+#   Name[tab]Size[tab]Timestamp
 # RETURNS:
 #   0 on success, 1 if there is no archives
 ### FUNCTION END
@@ -121,13 +122,13 @@ list_archives() {
         return 0
     fi
 
-     # Echo Tab header
+    # Echo Tab header
     printf "Name\tSize\tDate\n"
 
     # Echo full output with human readable size
     while IFS=$'\t' read -r name size date; do
-        printf "%s\t%s\t%s\n" "${name}" "$(hrb "${size}")" "$( date -d "@${date}" )"
-    done <<< "${output}"
+        printf "%s\t%s\t%s\n" "${name}" "$(hrb "${size}")" "$(date -d "@${date}")"
+    done <<<"${output}"
 
     return 0
 }
@@ -283,6 +284,49 @@ fetch_from_dest() {
         FILES_TO_TRANSFERT+=("${destination}/${filename}")
         log "Symbolic link to file '$file' created" verbose
     done
+
+    return 0
+}
+
+### FUNCTION BEGIN
+# Fetch archive snapshot files to a local destination
+# Archive snapshot is a .snar file
+# GLOBALS:
+# 	LOCAL_REPO destination dir for archives
+# ARGUMENTS:
+#   $1 : archive name (mandatory)
+#   $2 : destination path (mandatory)
+# RETURNS:
+#   0 on success, 1 otherwise (archive snapshot not found)
+### FUNCTION END
+fetch_archive_snapshot() {
+    _check_init
+
+    local archive_name="$1"
+    local destination_path="$2"
+
+    if [[ -z "$archive_name" ]]; then
+        abord "archive name is required"
+    fi
+
+    if [[ -z "$destination_path" ]]; then
+        abord "destination path is required"
+    fi
+
+    local snapshot_file
+    snapshot_file="${LOCAL_REPO}/${archive_name}.snar"
+
+    if [[ ! -f "$snapshot_file" ]]; then
+        log "Snapshot file '$snapshot_file' not found" verbose
+        return 1
+    fi
+
+    if ! cp "$snapshot_file" "$destination_path"; then
+        log "Error copying snapshot '$snapshot_file' to '$destination_path'" verbose
+        return 1
+    fi
+
+    log "Snapshot file '$snapshot_file' copied to '$destination_path'" verbose
 
     return 0
 }

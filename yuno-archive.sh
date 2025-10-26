@@ -59,8 +59,8 @@ Usage  :
 
 <Method> : Method to used to send archive. Available methods are :
 $(for method in "${METHODS[@]}"; do
-    echo "   - $method"
-done)
+        echo "   - $method"
+    done)
 
 Options :
    General options :
@@ -73,7 +73,8 @@ Options :
       -C |--check_size : Check if there is enough space in temp dir to create archive (compare source size to available space in root temp dir)
       -h |--hook=<script file> : Execute this script file before and after doing backup
       -i |--info=<info file> : Additionnal file to send with archive (sent unaltered). Possibility to add multiple files separated by spaces
-      -n |--name=<archive name> : Archive name. If not set, use datetime
+      -I |--incremental : Create an incremental backup
+      -n |--name=<archive name> : Archive name. If not set, use datetime. If incremental is used, this name correspond to the full backup
       -s |--source=<dir> : (mandatory) Source dir or files to backup.
       -k |--keep=all|<number to keep> : (default: all) How many exisiting backup do you want to keep if thereis not enough space on dest (all: do not prune old archives, 0 can prune all archives if necessary)
 
@@ -84,6 +85,7 @@ Options :
    
    Restore action options :
       -D |--destination=<dir> : (mandatory) Destination dir to restore archive
+      -I |--increment=all|base|<number of incremental> : (default: all) Restore all parts (full + all incrementals), only full backup (base) or full backup + number of incrementals
       -h |--hook=<script file> : Execute this script file before and after doing restoration
       -n |--name=<archive name> : (mandatory) Archive name to restore
 
@@ -117,7 +119,7 @@ load_method() {
         if [[ $(type -t init_method) != function ]]; then
             abord "Method file '${method}_method.sh' doesn't contain 'init_method' function"
         fi
-        
+
         if [[ $(type -t get_available_space) != function ]]; then
             abord "Method file '${method}_method.sh' doesn't contain 'get_available_space' function"
         fi
@@ -149,7 +151,11 @@ load_method() {
         if [[ $(type -t fetch_from_dest) != function ]]; then
             abord "Method file '${method}_method.sh' doesn't contain 'fetch_from_dest' function"
         fi
-        
+
+        if [[ $(type -t fetch_archive_snapshot) != function ]]; then
+            abord "Method file '${method}_method.sh' doesn't contain 'fetch_archive_snapshot' function"
+        fi
+
     else
         log "Unknown method '${method}'" error
         usage
@@ -160,14 +166,14 @@ load_method() {
 ### FUNCTION BEGIN
 # Check if there is sufficent space on device to store archive
 # Delete old archive if not
-# ARGUMENTS: 
+# ARGUMENTS:
 # 	$1 (integer) archive size (this size should be lower than available space on disk)
 #   $2 (integer) min number of archives to keep.
-# RETURN: 
+# RETURN:
 # 	0 if thereis sufficent space to store archive size (after prune), 1 otherwise
 ### FUNCTION END
 check_space_and_prune_old_archives() {
-    local -A args_array=([s]=space=  [k]=keep=)
+    local -A args_array=([s]=space= [k]=keep=)
     local space=0
     local keep=0
     handle_getopts_args "$@"
@@ -189,7 +195,7 @@ check_space_and_prune_old_archives() {
 
     local archives
     archives=$(list_archives olderfirst)
-    
+
     for archive in $archives; do
         backupsCount=$(count_archives)
         if [[ $backupsCount -le $keep ]]; then
@@ -214,13 +220,12 @@ check_space_and_prune_old_archives() {
         log "Not enough free space (available space  = $(hrb "${availableSpace}")). Continuing..."
     done
 
-
     log "Cannot make enough space on destination" "error"
     return 1
 }
 
 do_backup() {
-    local -A args_array=([n]=name= [s]=source= [c]=compress= [k]=keep= [i]=info= [C]=check_size [h]=hook=)
+    local -A args_array=([n]=name= [s]=source= [c]=compress= [k]=keep= [i]=info= [C]=check_size [h]=hook= [I]=incremental)
     local name
     name=$(date "+%Y-%m-%d_%H-%M-%S")
     local source=""
@@ -229,6 +234,7 @@ do_backup() {
     local info=""
     local check_size=""
     local hook=""
+    local incremental=""
     handle_getopts_args "${ARGS[@]}"
 
     # Check inputs
@@ -243,13 +249,11 @@ do_backup() {
     if [[ ! -f $source && ! -d $source ]]; then
         abord "Source '$source' is not a file, a directory or is not accessible"
     fi
-    
+
     name=${name//./-}
 
-    local tar_file="${TMP_DIR}/${name}.tar"
-    local md5_content_file="${TMP_DIR}/${name}.content.md5"
-    local md5_file="${TMP_DIR}/${name}.md5"
     local compress_cmd=""
+    local compress_extension=""
 
     # Set default value for compress method
     if [[ $compress == false ]]; then
@@ -257,12 +261,20 @@ do_backup() {
     elif [[ -z $compress ]]; then
         compress="gzip"
     fi
-    
+
     if [[ -n $compress ]]; then
         case "$compress" in
-        bzip2 | xz | gzip)
+        bzip2)
             compress_cmd="--${compress}"
-            tar_file="${tar_file}.${compress}"
+            compress_extension=".bz2"
+            ;;
+        xz)
+            compress_cmd="--${compress}"
+            compress_extension=".xz"
+            ;;
+        gzip)
+            compress_cmd="--${compress}"
+            compress_extension=".gz"
             ;;
         *)
             log "Unkown compress format '${compress}'" error
@@ -282,14 +294,14 @@ do_backup() {
         log "Check source size ('${source}') according to available space in tmp dir ('${TMP_DIR}')..." verbose
         local source_size
         local available_space_in_temp
-        source_size=$(du --bytes --total "$source" 2> /dev/null | tail --lines=1 | cut -f1)
+        source_size=$(du --bytes --total "$source" 2>/dev/null | tail --lines=1 | cut -f1)
         available_space_in_temp=$(findmnt --target "$source" --output AVAIL --bytes --noheadings --first-only)
         if [[ $source_size -gt $available_space_in_temp ]]; then
             abord "Not enough space to create temp archive (space neeeded = $(hrb "${source_size}") available space in temp = $(hrb "${available_space_in_temp}"))"
         fi
         log "OK source size = $(hrb "${source_size}") available space = $(hrb "${available_space_in_temp}")" verbose
     fi
-    
+
     # Initialisation
     load_method "${METHOD}"
     init_method "${ARGS[@]}"
@@ -329,25 +341,77 @@ do_backup() {
             FILES_TO_TRANSFERT+=("$dest_file_path")
             log "Info file '$file' copied to '${dest_file_path}'" verbose
         done
-        
+
     fi
 
-    # Create md5 content file
-    log "Create md5 content sum file"
-    find "${source}" -type f -exec md5sum {} \; | sed "s#${source}/##g" > "$md5_content_file"
-    
-    log "Add md5 content file '$md5_content_file' to transfert"
-    FILES_TO_TRANSFERT+=("$md5_content_file")
+    # Prepare incremental option backup if requested
+
+    local incremental_cmd=()
+    local incremental_snapshot_file="${TMP_DIR}/${name}.base.snar"
+    # This value will be empty if no incremental backup is requested
+    # Will take .base for base full backup and .incXX for incremental backup
+    local incremental_part_name=".base"
+
+    if [[ $incremental == "1" ]]; then
+        log "Requested incremental backup, trying to fetch previous snapshot..."
+
+        # Clean name from .base or .incXX suffix if present
+        name="${name%.@(base|inc+([0-9]))}"
+
+        if is_archive_exists "${name}.base"; then
+            log "Base archive '${name}.base' found on remote, creating incremental backup" verbose
+
+            # Get last incremental backup name
+            local last_incremental_backup_name=""
+            last_incremental_backup_name=$(get_last_incremental_backup_name "${name}")
+            local last_backup_snapshot_name="$last_incremental_backup_name"
+
+            if [[ -n "$last_incremental_backup_name" ]]; then
+                log "Last incremental backup found '${last_incremental_backup_name}'" verbose
+
+                # Extract incremental number and increment it
+                local next_incr_number="${last_incremental_backup_name#*.inc}"
+                next_incr_number=$(printf "%02d" $((10#$next_incr_number + 1)))
+
+                # Prepare incremental snapshot file and part name
+                incremental_part_name=".inc${next_incr_number}"
+                incremental_snapshot_file="${TMP_DIR}/${name}${incremental_part_name}.snar"
+            else
+                log "No previous incremental backup found, creating first incremental backup" verbose
+
+                incremental_part_name=".inc01"
+                incremental_snapshot_file="${TMP_DIR}/${name}${incremental_part_name}.snar"
+                last_backup_snapshot_name="${name}.base"
+            fi
+
+            # Get the snapshot file
+            if fetch_archive_snapshot "${last_backup_snapshot_name}" "$incremental_snapshot_file"; then
+                log "Snapshot file fetched to '$incremental_snapshot_file'" verbose
+            else
+                log "Cannot fetch snapshot file for last backup '${last_backup_snapshot_name}', creating full base backup instead" warning
+                incremental_part_name=".base"
+                incremental_snapshot_file="${TMP_DIR}/${name}.base.snar"
+            fi
+        else
+            log "Base archive '${name}.base' not found on remote, creating full base backup"
+            incremental_part_name=".base"
+            incremental_snapshot_file="${TMP_DIR}/${name}.base.snar"
+        fi
+
+        incremental_cmd=(--listed-incremental="${incremental_snapshot_file}")
+        FILES_TO_TRANSFERT+=("$incremental_snapshot_file")
+    fi
 
     # Create tar archive
     log "Create archive file"
-    
-    local verbose=""
-    [[ "${LOG_VERBOSE:-false}" == "true" ]] && verbose="--verbose"
-    if ! log_cmd tar --create --file="${tar_file}" ${compress_cmd} ${verbose} --directory="${source}" .; then
+
+    local tar_file="${TMP_DIR}/${name}${incremental_part_name}.tar${compress_extension}"
+    local verbose_cmd=""
+    [[ "${LOG_VERBOSE:-false}" == "true" ]] && verbose_cmd="--verbose"
+    if ! log_cmd tar --create --file="${tar_file}" ${compress_cmd} ${verbose_cmd} "${incremental_cmd[@]}" --directory="${source}" .; then
         abord "Cannot create archive '${tar_file}' !"
     fi
-    
+
     # Check compression
     if [[ -n $compress ]]; then
         if ! log_cmd "$compress" -t "${tar_file}"; then
@@ -358,10 +422,28 @@ do_backup() {
     log "Add archive file '${tar_file}' to transfert"
     FILES_TO_TRANSFERT+=("$tar_file")
 
+    # Create md5 content file
+    log "Create md5 content sum file"
+    local md5_content_file="${TMP_DIR}/${name}${incremental_part_name}.content.md5"
+
+    tar --list --file="${tar_file}" ${compress_cmd} | while read -r file_in_tar; do
+        if [[ $file_in_tar == "./" || $file_in_tar == "." || ! -f "${source}/${file_in_tar#./}" ]]; then
+            continue
+        fi
+        if ! md5sum_output=$(md5sum "${source}/${file_in_tar#./}" 2>/dev/null); then
+            abord "Cannot compute md5 sum for file '${source}/${file_in_tar#./}'"
+        fi
+        echo "${md5sum_output//${source}/.}"
+    done >"$md5_content_file"
+
+    log "Add md5 content file '$md5_content_file' to transfert"
+    FILES_TO_TRANSFERT+=("$md5_content_file")
+
     # Create md5 file
     log "Create md5 sum file"
+    local md5_file="${TMP_DIR}/${name}${incremental_part_name}.md5"
     for file in "${FILES_TO_TRANSFERT[@]}"; do
-        md5sum "$file" | sed "s#${TMP_DIR}/##" >> "$md5_file"
+        md5sum "$file" | sed "s#${TMP_DIR}/##" >>"$md5_file"
     done
 
     log "Add md5 file '$md5_file' to transfert"
@@ -385,7 +467,7 @@ do_backup() {
     fi
 
     log "Archive '$name' files sent" success
-    
+
     cleanup
     log "End backup '$METHOD'" info
     return 0
@@ -406,7 +488,7 @@ do_delete() {
     # Initialisation
     load_method "$METHOD"
     init_method "${ARGS[@]}"
-    
+
     local list
     list=$(list_archives)
     if ! echo "$list" | grep -q "$name"; then
@@ -491,13 +573,14 @@ do_version() {
 }
 
 do_restore() {
-    local -A args_array=([n]=name= [D]=destination= [h]=hook=)
+    local -A args_array=([n]=name= [D]=destination= [h]=hook= [I]=increment=)
     local name=""
     local destination=""
     local hook=""
+    local increment="all"
 
     handle_getopts_args "${ARGS[@]}"
-    
+
     # Check inputs
     if [[ -z $name ]]; then
         log "name is required" error
@@ -514,7 +597,7 @@ do_restore() {
     if [[ ! -d $destination ]]; then
         abord "destination '$destination' is not a directory or is not accessible"
     fi
-    
+
     # Initialisation
     load_method "$METHOD"
     init_method "${ARGS[@]}"
@@ -524,49 +607,18 @@ do_restore() {
         init_hook "$hook" restore
     fi
 
-    local list
-    list=$(list_archives)
-    if ! echo "$list" | grep -q "$name"; then
+    local archives_to_restore=""
+    archives_to_restore=$(get_archives_to_fetch "$name" "$increment")
+
+    if [[ -z "$archives_to_restore" ]]; then
         abord "Archive '$name' not found"
     fi
 
-    log "Fetching archive..." info
-    if ! fetch_from_dest --name="$name" --destination="$TMP_DIR"; then
-        abord "Error while fetching archive"
-    fi
-    log "archive fetched" success
+    log "Archives to restore : $archives_to_restore" verbose
 
-    log "Check archive..." info
-    local actual_path
-    actual_path=$(pwd)
-    local md5_file="${name}.md5"
-    cd "${TMP_DIR}"
-    if ! log_cmd md5sum --check "$md5_file"; then
-        abord "Archive check failed, files are corrupted"
-    fi
-    log "Archive checked " success
-    cd "$actual_path"
-
-    
-    local verbose=""
-    [[ "${LOG_VERBOSE:-false}" == "true" ]] && verbose="--verbose"
-
-    for tar_file in "$TMP_DIR/${name}".tar*; do
-        [[ -e "$tar_file" ]] || continue
-        log "Restore archive file '${tar_file}..." info
-        if ! log_cmd tar --extract --file="${tar_file}" --auto-compress ${verbose} --directory="${destination}" .; then
-            abord "Cannot restore archive '${tar_file}' !"
-        fi
-        log "Archive file '${tar_file} restored" success
-    done
-
-    log "Checking extracted files..." info
-    local md5_content_file="${TMP_DIR}/${name}.content.md5"
-    cd "${destination}"
-    if ! log_cmd md5sum --check "$md5_content_file"; then
-        abord "Restored files check failed, files are corrupted"
-    fi
-    log "Restored files checked" success
+    while read -r archive; do
+        restore_an_archive "$archive" "$destination"
+    done <<<"$archives_to_restore"
 
     cleanup
     return 0
@@ -577,8 +629,8 @@ do_send() {
     local source=""
 
     handle_getopts_args "${ARGS[@]}"
-    
-   # Check inputs
+
+    # Check inputs
     if [[ -z $source ]]; then
         log "source is required" error
         usage
@@ -590,7 +642,7 @@ do_send() {
     if [[ ! -f $source && ! -d $source ]]; then
         abord "Source '$source' is not a file, a directory or is not accessible"
     fi
-    
+
     # Initialisation
     load_method "${METHOD}"
     init_method "${ARGS[@]}"
@@ -599,7 +651,7 @@ do_send() {
     log "args ${ARGS[*]}" verbose
 
     declare -a local_archives
-    mapfile -t local_archives < <( ${BASH_SOURCE[0]} list local --sort=newerfirst --repository="${source}" --full | tail --lines=+2)
+    mapfile -t local_archives < <(${BASH_SOURCE[0]} list local --sort=newerfirst --repository="${source}" --full | tail --lines=+2)
     if [[ ${#local_archives[@]} -eq 0 ]]; then
         log "No local archives found in '${source}'" warning
         cleanup
@@ -608,18 +660,19 @@ do_send() {
     log "Found ${#local_archives[@]} local archives in '${source}'"
 
     declare -a remote_archives
-    mapfile -t remote_archives < <( list_archives olderfirst )
+    mapfile -t remote_archives < <(list_archives olderfirst)
     log "Found ${#remote_archives[@]} remote archives in destination repository"
 
     declare -a archives_to_send=()
 
     for archive in "${local_archives[@]}"; do
-        name=$( echo  "${archive}" | cut -f1 )
-        size=$( echo  "${archive}" | cut -f2 )
-        
+        name=$(echo "${archive}" | cut -f1)
+        size=$(echo "${archive}" | cut -f2)
+
         # We stop if local archive exists on remote
-        if  [[ " ${remote_archives[*]} " =~ " ${name} " ]]; then
-            break;
+        # shellcheck disable=SC2076
+        if [[ " ${remote_archives[*]} " =~ " ${name} " ]]; then
+            break
         fi
 
         archives_to_send+=("${name}\t${size}")
@@ -637,12 +690,12 @@ do_send() {
     local cannot_send=false
 
     for archive in "${archives_to_send[@]}"; do
-        name=$( echo -e "${archive}" | cut -f1 )
-        size=$( echo -e "${archive}" | cut -f2 )
-        
+        name=$(echo -e "${archive}" | cut -f1)
+        size=$(echo -e "${archive}" | cut -f2)
+
         # We stop if local archive exists on remote
-        if  [[ " ${remote_archives[*]} " =~ " ${name} " ]]; then
-            break;
+        if [[ " ${remote_archives[*]} " =~ " ${name} " ]]; then
+            break
         fi
 
         log "Check space and prune old archives..."
@@ -656,7 +709,7 @@ do_send() {
 
         log "Sending archive '$name' to remote..."
         mapfile -t FILES_TO_TRANSFERT < <(find "${source}" -maxdepth 1 -type f -name "${name}.*")
-        
+
         if ! send_to_dest; then
             log "Error while sending archive" error
             cannot_send=true

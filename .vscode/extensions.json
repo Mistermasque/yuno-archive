@@ -3,6 +3,7 @@
         "mads-hartmann.bash-ide-vscode",
         "jeff-hykin.better-shellscript-syntax",
         "timonwong.shellcheck",
-        "rogalmic.bash-debug"
+        "rogalmic.bash-debug",
+        "foxundermoon.shell-format"
     ]
 }

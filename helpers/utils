@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+shopt -s extglob  # Activate extended patternering features
+
 # Set to true if cleaning process
 declare CLEANING_UP=false
 
@@ -130,4 +132,245 @@ init_hook() {
 
 handle_sigterm_sigint() {
     abord 'Script interrupted, clean properly'
+}
+
+is_archive_exists() {
+    local archive_name="$1"
+    if [[ -z "$archive_name" ]]; then
+        abord "archive name is required"
+    fi
+
+    list_archives | grep -q "^${archive_name}$"
+    return $?
+}
+
+### FUNCTION BEGIN
+# Get archive infos. Infos as to be printed with this format:
+# Name: <archive name>
+# Size: <size in bytes>
+# Timestamp: <date as timestamp>
+# Increments: <number of increments>
+# Increments names: <list of increments names separated by commas>
+# Increments sizes: <list of increments sizes in bytes separated by commas>
+# Increments timestamps: <list of increments dates as timestamp separated by commas>
+# GLOBALS:
+#   LOCAL_REPO destination dir for archives
+# ARGUMENTS:
+#   $1 : name of the archive the name can be an increment name
+# OUTPUTS:
+# 	Print infos
+# RETURNS:
+#   0 on success, 1 if archive not found
+### FUNCTION END
+get_archive_infos() {
+    local name="$1"
+    local human_readable="${2:-false}"
+
+    if [[ -z "$name" ]]; then
+        abord "archive name is required"
+    fi
+
+    # Delete .base or .incX suffix to get the main archive name
+    # This command requires extglob to be enabled (shopt -s extglob)
+    name="${name%.@(base|inc+([0-9]))}"
+
+    local archive_list=""
+    # shellcheck disable=SC2086
+    archive_list=$(list_archives false true ${human_readable} | sed '1d' | grep "^${name}" | sort)
+    if [[ -z "$archive_list" ]]; then
+        return 1
+    fi
+
+    local is_incremental=false
+    if echo "$archive_list" | grep -q '.base'; then
+        is_incremental=true
+    fi
+
+    local size=0
+    local timestamp=0
+    declare -a increment_names=()
+    declare -a increment_sizes=()
+    declare -a increment_timestamps=()
+
+
+    size=$(echo "$archive_list" | grep -v '.inc' | head -n1 | cut -f2)
+    timestamp=$(echo "$archive_list" | grep -v '.inc' | head -n1 | cut -f3)
+
+    if $is_incremental; then
+        while read -r line; do
+            local inc_name
+            inc_name=$(echo "$line" | cut -f1)
+            local inc_size
+            inc_size=$(echo "$line" | cut -f2)
+            local inc_timestamp
+            inc_timestamp=$(echo "$line" | cut -f3)
+
+            increment_names+=("$inc_name")
+            increment_sizes+=("$inc_size")
+            increment_timestamps+=("$inc_timestamp")
+        done < <(echo "$archive_list" | grep '.inc')
+    fi
+
+    local num_increments=${#increment_names[@]}
+
+    cat <<OUTPUT
+Name: ${name}
+Size: ${size}
+Date: ${timestamp}
+Increments: ${num_increments}
+Increments names: ${increment_names[*]// /,}
+Increments sizes: ${increment_sizes[*]// /,}
+Increments dates: ${increment_timestamps[*]// /,}
+OUTPUT
+
+    return 0
+}
+
+get_last_incremental_backup_name() {
+    local name="$1"
+    if [[ -z "$name" ]]; then
+        abord "archive name is required"
+    fi
+
+    # Delete .base or .incX suffix to get the main archive name
+    # This command requires extglob to be enabled (shopt -s extglob)
+    name="${name%.@(base|inc+([0-9]))}"
+
+
+    # List archives only archives names, filter on the given name, sort them and get the last one
+    local output
+    output=$(list_archives | grep "^${name}.inc[0-9][0-9]*" | sort | tail -n1)
+    echo "${output}"
+}
+
+
+### FUNCTION BEGIN
+# Get list of archives to fetch based on given name and increments
+# ARGUMENTS:
+#   $1 : name of the archive the name can be an increment name
+#   $2 : increments to fetch (all|base|<number>) default all
+# OUTPUTS:
+# 	Print list of archives to fetch
+### FUNCTION END
+get_archives_to_fetch() {
+    local name="$1"
+    local increments="${2-all}"
+
+    if [[ ! "$increments" =~ ^(all|base|[0-9]+)$ ]]; then
+        abord "Increment value '${increments}' invalid"
+    fi
+
+    # Delete .base or .incX suffix to get the main archive name
+    # This command requires extglob to be enabled (shopt -s extglob)
+    name="${name%.@(base|inc+([0-9]))}"
+
+    local list_archives=""
+    list_archives=$(list_archives | grep "^${name}" | sort)
+
+    if [[ -z $list_archives ]]; then
+        return
+    fi
+
+    if [[ $increments == 'all' ]]; then
+        echo "$list_archives"
+        return
+    fi
+
+    if [[ $increments == 'base' ]]; then
+        echo "$list_archives" | grep ".base" | tail -n1
+        return
+    fi
+
+    local max_increment=""
+    max_increment=$(printf "%02d" $((10#$increments)))
+
+    if ! echo "$list_archives" | grep -q ".inc${max_increment}"; then
+        abord "Increment number '${increments}' doesn't exist for archive '${name}'"
+    fi
+
+    while read -r archive_name; do
+        if [[ "$archive_name" == *".base" ]]; then
+            echo "$archive_name"
+            continue
+        fi
+
+        local increment_number=${archive_name##*.inc}
+        if [[ ! "$increment_number" =~ ^[0-9]{1,2}$ ]]; then
+            continue
+        fi
+
+        if [[ $increment_number -le $max_increment ]]; then
+            echo "$archive_name"
+            continue
+        fi
+    done < <(echo "$list_archives")
+}
+
+
+restore_an_archive() {
+    local name="$1"
+    local destination="$2"
+
+    if [[ -z "$name" ]]; then
+        abord "archive name is required"
+    fi
+    if [[ -z "$destination" ]]; then
+        abord "destination directory is required"
+    fi
+
+    log "Fetching archive '${name}' ..." info
+    if ! fetch_from_dest --name="$name" --destination="$TMP_DIR"; then
+        abord "Error while fetching archive"
+    fi
+    log "archive fetched" success
+
+    log "Check archive '${name}' ..." info
+    local actual_path
+    actual_path=$(pwd)
+    
+    
+    local md5_file="${name}.md5"
+
+    cd "${TMP_DIR}" || abord "Cannot change directory to '${TMP_DIR}'"
+
+    if ! log_cmd md5sum --check "$md5_file"; then
+        abord "Archive check failed, files are corrupted"
+    fi
+    log "Archive checked " success
+    cd "$actual_path" || abord "Cannot change directory to '${actual_path}'"
+
+    
+    local verbose_cmd=""
+    [[ "${LOG_VERBOSE:-false}" == "true" ]] && verbose_cmd="--verbose"
+
+    # Check if we have an incremental backup
+    local incremental_cmd=()
+    if [[ "$name" =~ \.(inc[0-9]{2}|base)$ ]]; then
+        local snar_file="${TMP_DIR}/${name}.snar"
+        if [[ ! -f "$snar_file" ]]; then
+            abord "Snar file '${snar_file}' not found for incremental restore"
+        fi
+        
+        incremental_cmd=( --listed-incremental="${snar_file}" )
+    fi
+
+    for tar_file in "$TMP_DIR/${name}".tar*; do
+        [[ -e "$tar_file" ]] || continue
+        log "Restore archive file '${tar_file}..." info
+        if ! log_cmd tar --extract --file="${tar_file}" --auto-compress ${verbose_cmd} "${incremental_cmd[@]}" --directory="${destination}" .; then
+            abord "Cannot restore archive '${tar_file}' !"
+        fi
+        log "Archive file '${tar_file} restored" success
+    done
+
+    log "Checking extracted files..." info
+    local md5_content_file="${TMP_DIR}/${name}.content.md5"
+    cd "${destination}" || abord "Cannot change directory to '${destination}'"
+
+    if [[ ! -s "$md5_content_file" ]]; then
+        log "Content md5 file '${md5_content_file}' not found or empty (no files to check)" warning
+    elif ! log_cmd md5sum --check "$md5_content_file"; then
+        abord "Restored files check failed, files are corrupted"
+    fi
+    log "Restored files checked" success
 }

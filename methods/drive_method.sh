@@ -265,7 +265,7 @@ list_archives() {
 # 	Print count of archives
 ### FUNCTION END
 count_archives() {
-    list_archives false false false | wc -l  || echo 0
+    list_archives false false false | wc -l || echo 0
 }
 
 ### FUNCTION BEGIN
@@ -400,6 +400,49 @@ fetch_from_dest() {
         FILES_TO_TRANSFERT+=("${destination}/${filename}")
         log "File '$file' fetched in '${destination}'" verbose
     done
+
+    return 0
+}
+
+### FUNCTION BEGIN
+# Fetch archive snapshot files to a local destination
+# Archive snapshot is a .snar file
+# GLOBALS:
+# 	DRIVE_REPO destination dir for archives
+# ARGUMENTS:
+#   $1 : archive name (mandatory)
+#   $2 : destination path (mandatory)
+# RETURNS:
+#   0 on success, 1 otherwise (archive snapshot not found)
+### FUNCTION END
+fetch_archive_snapshot() {
+    _check_init
+
+    local archive_name="$1"
+    local destination_path="$2"
+
+    if [[ -z "$archive_name" ]]; then
+        abord "archive name is required"
+    fi
+
+    if [[ -z "$destination_path" ]]; then
+        abord "destination path is required"
+    fi
+
+    local snapshot_file
+    snapshot_file="${DRIVE_REPO}/${archive_name}.snar"
+
+    if [[ ! -f "$snapshot_file" ]]; then
+        log "Snapshot file '$snapshot_file' not found" verbose
+        return 1
+    fi
+
+    if ! cp "$snapshot_file" "$destination_path"; then
+        log "Error copying snapshot '$snapshot_file' to '$destination_path'" verbose
+        return 1
+    fi
+
+    log "Snapshot file '$snapshot_file' copied to '$destination_path'" verbose
 
     return 0
 }

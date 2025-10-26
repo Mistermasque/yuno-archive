@@ -358,3 +358,51 @@ fetch_from_dest() {
 
     return 0
 }
+
+### FUNCTION BEGIN
+# Fetch archive snapshot files to a local destination
+# Archive snapshot is a .snar file
+# GLOBALS:
+# 	DRIVE_REPO destination dir for archives
+# ARGUMENTS:
+#   $1 : archive name (mandatory)
+#   $2 : destination path (mandatory)
+# RETURNS:
+#   0 on success, 1 otherwise (archive snapshot not found)
+### FUNCTION END
+fetch_archive_snapshot() {
+    _check_init
+
+    local archive_name="$1"
+    local destination_path="$2"
+
+    if [[ -z "$archive_name" ]]; then
+        abord "archive name is required"
+    fi
+
+    if [[ -z "$destination_path" ]]; then
+        abord "destination path is required"
+    fi
+
+    local destination_dir=""
+    destination_dir=$(dirname "$destination_path")
+    local destination_filename=""
+    destination_filename=$(basename "$destination_path")
+
+    local snapshot_file
+    snapshot_file="${RCLONE_DEST}/${archive_name}.snar"
+
+    local verbose=""
+    [[ "${LOG_VERBOSE:-false}" == "true" ]] && verbose="--verbose"
+
+    if ! log_cmd rclone copy "$snapshot_file" "${destination_dir}/" ${verbose}; then
+        log "Unable to transfert '$file'" error
+        return 1
+    fi
+    # Rclone copy to a directory. We use this trick to have exact file name
+    mv "${destination_dir}/${archive_name}.snar" "${destination_dir}/${destination_filename}"
+
+    log "Snapshot file '$snapshot_file' transfered to '$destination_path'" verbose
+
+    return 0
+}
