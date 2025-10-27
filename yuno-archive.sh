@@ -495,9 +495,7 @@ do_delete() {
     load_method "$METHOD"
     init_method "${ARGS[@]}"
 
-    local list
-    list=$(list_archives)
-    if ! echo "$list" | grep -q "$name"; then
+    if ! is_archive_exists "$name"; then
         log "Archive '$name' not found'" warning
         cleanup
         return 0
