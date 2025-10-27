@@ -48,6 +48,7 @@ Usage  :
    backup:  Backup a dir to a repo
    delete:  Delete a backup on repo
    help:    Print help message. If you want help for a method type help <Method>
+   info:    Print backup infos
    list:    List available backups on repo   
    restore: Restore a backup
    send:    Send local archives to remote repo
@@ -82,6 +83,10 @@ Options :
       -f |--full : Print full info about archives (size, date, name)
       -h |--human_readable : Print sizes in human readable format (eg: 1K, 234M, 2G)
       -s |--sort=<sort order> : Sort backup list. <sort order> can be : olderfirst|o for older first, n|newerfirst for newer first
+
+   Info action options :
+      -h |--human_readable : Print sizes in human readable format (eg: 1K, 234M, 2G) and dates in human readables instead of timestamps
+      -n |--name=<archive name> : Archive name (mandatory). Can be an increment name or a base name
    
    Restore action options :
       -D |--destination=<dir> : (mandatory) Destination dir to restore archive
@@ -347,16 +352,17 @@ do_backup() {
     # Prepare incremental option backup if requested
 
     local incremental_cmd=()
-    local incremental_snapshot_file="${TMP_DIR}/${name}.base.snar"
     # This value will be empty if no incremental backup is requested
     # Will take .base for base full backup and .incXX for incremental backup
-    local incremental_part_name=".base"
+    local incremental_part_name=""
 
     if [[ $incremental == "1" ]]; then
         log "Requested incremental backup, trying to fetch previous snapshot..."
 
         # Clean name from .base or .incXX suffix if present
         name="${name%.@(base|inc+([0-9]))}"
+
+        local incremental_snapshot_file="${TMP_DIR}/${name}.base.snar"
 
         if is_archive_exists "${name}.base"; then
             log "Base archive '${name}.base' found on remote, creating incremental backup" verbose
@@ -732,6 +738,39 @@ do_send() {
     fi
 }
 
+do_info() {
+    local -A args_array=([h]=human_readable [n]=name=)
+    local human_readable=false
+    local name=""
+    handle_getopts_args "${ARGS[@]}"
+    # Check inputs
+    if [[ -z $name ]]; then
+        log "name is required" error
+        usage
+        return 1
+    fi
+
+    # Convert input flags to true/false values
+    if [[ $human_readable == "1" ]]; then
+        human_readable=true
+    elif [[ $human_readable == "0" ]]; then
+        human_readable=false
+    fi
+
+    # Initialisation
+    load_method "$METHOD"
+    init_method "${ARGS[@]}"
+
+    if ! is_archive_exists "$name"; then
+        abord "Archive '${name}' doesn't exits"
+    fi
+
+    get_archive_infos "$name" "$human_readable"
+
+    cleanup
+    return 0
+}
+
 ###############################################################################
 #                                     MAIN                                    #
 ###############################################################################
@@ -781,6 +820,9 @@ delete)
     ;;
 help)
     do_help "$METHOD"
+    ;;
+info)
+    do_info
     ;;
 list)
     do_list
