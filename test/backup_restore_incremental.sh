@@ -7,7 +7,7 @@ init() {
     SOURCE_DIR="$TMP_DIR/source"
     mkdir -p "$SOURCE_DIR/rep"
     # Create initial files in source directory
-    echo "File 1 content" >"$SOURCE_DIR/file1.txt"
+    echo "File 1 content" >"$SOURCE_DIR/file 1.txt"
     echo "File 2 content" >"$SOURCE_DIR/rep/file2.txt"
     echo "File 3 content" >"$SOURCE_DIR/rep/file3.txt"
 }
@@ -68,10 +68,10 @@ backup_tests() {
         method_opts=(local --repository="$repository")
         ;;
     rclone)
-        method_opts=(rclone --repository="$repository" --path="tests_backup_restore")
+        method_opts=(rclone --repository="$repository" --path="tests backup restore")
         ;;
     drive)
-        method_opts=(drive --drive="$repository" --repository="tests_backup_restore")
+        method_opts=(drive --drive="$repository" --repository="tests backup restore")
         ;;
     *)
         error_msg "Unknown method: $method"
@@ -82,7 +82,7 @@ backup_tests() {
 
     # Create first backup
     echo -e "\n------- Creating initial backup...\n"
-    test_cmd $YUNO_ARCHIVE backup "${method_opts[@]}" --source="$SOURCE_DIR" --name="test_${method}_backup" --incremental --verbose
+    test_cmd $YUNO_ARCHIVE backup "${method_opts[@]}" --source="$SOURCE_DIR" --name="test ${method} backup" --incremental --verbose
 
     # Check available backups
     echo -e "\n------- Available backups after first backup:\n"
@@ -91,15 +91,15 @@ backup_tests() {
     echo -e "\n------- Test initial backup...\n"
     # Compare list backup
     INITIAL_LIST=$($YUNO_ARCHIVE list "${method_opts[@]}")
-    EXPECTED_LIST="test_${method}_backup.base"
+    EXPECTED_LIST="test ${method} backup.base"
     test_values "$EXPECTED_LIST" "$INITIAL_LIST" "Initial backup list"
 
     # Modify source directory for incremental backup
-    echo "File 1 content modified" >"$SOURCE_DIR/file1.txt"
+    echo "File 1 content modified" >"$SOURCE_DIR/file 1.txt"
 
     # Create second backup (incremental)
     echo -e "\n------- Creating second backup incremental...\n"
-    test_cmd $YUNO_ARCHIVE backup "${method_opts[@]}" --source="$SOURCE_DIR" --name="test_${method}_backup" --incremental --verbose
+    test_cmd $YUNO_ARCHIVE backup "${method_opts[@]}" --source="$SOURCE_DIR" --name="test ${method} backup" --incremental --verbose
 
     # List available backups
     echo -e "\n------- Available backups after two backups:\n"
@@ -108,13 +108,13 @@ backup_tests() {
     echo -e "\n------- Test second backup...\n"
     # Compare list backup
     SECOND_LIST=$($YUNO_ARCHIVE list "${method_opts[@]}" | sort)
-    EXPECTED_LIST="test_${method}_backup.base
-test_${method}_backup.inc01"
+    EXPECTED_LIST="test ${method} backup.base
+test ${method} backup.inc01"
     test_values "$EXPECTED_LIST" "$SECOND_LIST" "Second backup list"
 
     # Create third backup (incremental) without changes
     echo -e "\n------- Creating third backup incremental...\n"
-    test_cmd $YUNO_ARCHIVE backup "${method_opts[@]}" --source="$SOURCE_DIR" --name="test_${method}_backup" --incremental --verbose
+    test_cmd $YUNO_ARCHIVE backup "${method_opts[@]}" --source="$SOURCE_DIR" --name="test ${method} backup" --incremental --verbose
 
     # List available backups again
     echo -e "\n------- Available backups after third incremental backup (no changes):\n"
@@ -123,9 +123,9 @@ test_${method}_backup.inc01"
     echo -e "\n------- Test third backup...\n"
     # Compare list backup
     THIRD_LIST=$($YUNO_ARCHIVE list "${method_opts[@]}" | sort)
-    EXPECTED_LIST="test_${method}_backup.base
-test_${method}_backup.inc01
-test_${method}_backup.inc02"
+    EXPECTED_LIST="test ${method} backup.base
+test ${method} backup.inc01
+test ${method} backup.inc02"
     test_values "$EXPECTED_LIST" "$THIRD_LIST" "Third backup list"
 
     # Create fourth backup (incremental) with file created and file deleted
@@ -133,7 +133,7 @@ test_${method}_backup.inc02"
     rm "$SOURCE_DIR/rep/file2.txt"
 
     echo -e "\n------- Creating fourth backup incremental...\n"
-    test_cmd $YUNO_ARCHIVE backup "${method_opts[@]}" --source="$SOURCE_DIR" --name="test_${method}_backup" --incremental --verbose
+    test_cmd $YUNO_ARCHIVE backup "${method_opts[@]}" --source="$SOURCE_DIR" --name="test ${method} backup" --incremental --verbose
 
     # List available backups again
     echo -e "\n------- Available backups after fourth incremental backup (file created and file deleted):\n"
@@ -142,10 +142,10 @@ test_${method}_backup.inc02"
     echo -e "\n------- Test fourth backup...\n"
     # Compare list backup
     FOURTH_LIST=$($YUNO_ARCHIVE list "${method_opts[@]}" | sort)
-    EXPECTED_LIST="test_${method}_backup.base
-test_${method}_backup.inc01
-test_${method}_backup.inc02
-test_${method}_backup.inc03"
+    EXPECTED_LIST="test ${method} backup.base
+test ${method} backup.inc01
+test ${method} backup.inc02
+test ${method} backup.inc03"
     test_values "$EXPECTED_LIST" "$FOURTH_LIST" "Fourth backup list"
 }
 
@@ -159,10 +159,10 @@ restore_tests() {
         method_opts=(local --repository="$repository")
         ;;
     rclone)
-        method_opts=(rclone --repository="$repository" --path="tests_backup_restore")
+        method_opts=(rclone --repository="$repository" --path="tests backup restore")
         ;;
     drive)
-        method_opts=(drive --drive="$repository" --repository="tests_backup_restore")
+        method_opts=(drive --drive="$repository" --repository="tests backup restore")
         ;;
     *)
         error_msg "Unknown method: $method"
@@ -175,13 +175,13 @@ restore_tests() {
 
     RESTORE_DIR="$TMP_DIR/$method/restore-base"
     mkdir -p "$RESTORE_DIR"
-    test_cmd $YUNO_ARCHIVE restore "${method_opts[@]}" --name="test_${method}_backup" --destination="$RESTORE_DIR" --increment=base --verbose
+    test_cmd $YUNO_ARCHIVE restore "${method_opts[@]}" --name="test ${method} backup" --destination="$RESTORE_DIR" --increment=base --verbose
 
     echo -e "\n------- Check restore-base from base backup...\n"
 
     # Verify restored files
-    RESTORED_FILE1_CONTENT=$(cat "$RESTORE_DIR/file1.txt")
-    test_values "File 1 content" "$RESTORED_FILE1_CONTENT" "Restored file1.txt from base backup"
+    RESTORED_FILE1_CONTENT=$(cat "$RESTORE_DIR/file 1.txt")
+    test_values "File 1 content" "$RESTORED_FILE1_CONTENT" "Restored file 1.txt from base backup"
 
     RESTORED_FILE2_CONTENT=$(cat "$RESTORE_DIR/rep/file2.txt")
     test_values "File 2 content" "$RESTORED_FILE2_CONTENT" "Restored file2.txt from base backup"
@@ -193,13 +193,13 @@ restore_tests() {
 
     RESTORE_DIR="$TMP_DIR/$method/restore-inc01"
     mkdir -p "$RESTORE_DIR"
-    test_cmd $YUNO_ARCHIVE restore "${method_opts[@]}" --name="test_${method}_backup" --destination="$RESTORE_DIR" --increment=1 --verbose
+    test_cmd $YUNO_ARCHIVE restore "${method_opts[@]}" --name="test ${method} backup" --destination="$RESTORE_DIR" --increment=1 --verbose
 
     echo -e "\n------- Check restore-inc01 from inc01 backup...\n"
 
     # Verify restored files
-    RESTORED_FILE1_CONTENT=$(cat "$RESTORE_DIR/file1.txt")
-    test_values "File 1 content modified" "$RESTORED_FILE1_CONTENT" "Restored file1.txt from inc01 backup"
+    RESTORED_FILE1_CONTENT=$(cat "$RESTORE_DIR/file 1.txt")
+    test_values "File 1 content modified" "$RESTORED_FILE1_CONTENT" "Restored file 1.txt from inc01 backup"
 
     RESTORED_FILE2_CONTENT=$(cat "$RESTORE_DIR/rep/file2.txt")
     test_values "File 2 content" "$RESTORED_FILE2_CONTENT" "Restored file2.txt from inc01 backup"
@@ -211,13 +211,13 @@ restore_tests() {
 
     RESTORE_DIR="$TMP_DIR/$method/restore-inc02"
     mkdir -p "$RESTORE_DIR"
-    test_cmd $YUNO_ARCHIVE restore "${method_opts[@]}" --name="test_${method}_backup" --destination="$RESTORE_DIR" --increment=2 --verbose
+    test_cmd $YUNO_ARCHIVE restore "${method_opts[@]}" --name="test ${method} backup" --destination="$RESTORE_DIR" --increment=2 --verbose
 
     echo -e "\n------- Check restore-inc02 from inc02 backup...\n"
 
     # Verify restored files
-    RESTORED_FILE1_CONTENT=$(cat "$RESTORE_DIR/file1.txt")
-    test_values "File 1 content modified" "$RESTORED_FILE1_CONTENT" "Restored file1.txt from inc02 backup"
+    RESTORED_FILE1_CONTENT=$(cat "$RESTORE_DIR/file 1.txt")
+    test_values "File 1 content modified" "$RESTORED_FILE1_CONTENT" "Restored file 1.txt from inc02 backup"
 
     RESTORED_FILE2_CONTENT=$(cat "$RESTORE_DIR/rep/file2.txt")
     test_values "File 2 content" "$RESTORED_FILE2_CONTENT" "Restored file2.txt from inc02 backup"
@@ -229,13 +229,13 @@ restore_tests() {
 
     RESTORE_DIR="$TMP_DIR/$method/restore-inc03"
     mkdir -p "$RESTORE_DIR"
-    test_cmd $YUNO_ARCHIVE restore "${method_opts[@]}" --name="test_${method}_backup" --destination="$RESTORE_DIR" --increment=3 --verbose
+    test_cmd $YUNO_ARCHIVE restore "${method_opts[@]}" --name="test ${method} backup" --destination="$RESTORE_DIR" --increment=3 --verbose
 
     echo -e "\n------- Check restore-inc03 from inc03 backup...\n"
 
     # Verify restored files
-    RESTORED_FILE1_CONTENT=$(cat "$RESTORE_DIR/file1.txt")
-    test_values "File 1 content modified" "$RESTORED_FILE1_CONTENT" "Restored file1.txt from inc03 backup"
+    RESTORED_FILE1_CONTENT=$(cat "$RESTORE_DIR/file 1.txt")
+    test_values "File 1 content modified" "$RESTORED_FILE1_CONTENT" "Restored file 1.txt from inc03 backup"
 
     if [ -f "$RESTORE_DIR/rep/file2.txt" ]; then
         error_msg "Test failed for Restored file2.txt from inc03 backup: file should be deleted"
@@ -251,6 +251,8 @@ restore_tests() {
     RESTORED_FILE3_CONTENT=$(cat "$RESTORE_DIR/file4.txt")
     test_values "File 4 content" "$RESTORED_FILE3_CONTENT" "Restored file4.txt from inc03 backup"
 }
+
+# TODO add delete test
 
 ############################################################
 # Main script                                              #
@@ -277,7 +279,7 @@ echo -e "\n======= Starting Backup Drive Incremental Tests =======\n"
 
 init
 
-BACKUP_DRIVE="/dev/sdbXXXX"
+BACKUP_DRIVE="/dev/sdb1"
 
 backup_tests drive "$BACKUP_DRIVE"
 
@@ -291,7 +293,7 @@ echo -e "\n======= Starting Backup Rclone Incremental Tests =======\n"
 
 init
 
-BACKUP_RCLONE="XXXXXX"
+BACKUP_RCLONE="pcloud-crypt"
 
 backup_tests rclone "$BACKUP_RCLONE"
 
