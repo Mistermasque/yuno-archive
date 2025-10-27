@@ -256,7 +256,7 @@ get_archives_to_fetch() {
     name="${name%.@(base|inc+([0-9]))}"
 
     local list_archives=""
-    list_archives=$(list_archives | grep "^${name}" | sort)
+    list_archives=$(list_archives | grep -E "^${name}(\.base|\.inc[0-9]+)?$" | sort)
 
     if [[ -z $list_archives ]]; then
         return
