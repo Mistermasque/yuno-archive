@@ -228,7 +228,7 @@ list_archives() {
     fi
 
     # Delete duplicate names
-    output=$(echo "${output}" | awk '!a[$1]++')
+    output=$(echo "${output}" | awk -F '\t' '!a[$1]++')
 
     if [[ -z "${output}" ]]; then
         return 1

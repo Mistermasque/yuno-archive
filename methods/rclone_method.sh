@@ -152,6 +152,7 @@ list_archives() {
         esac
     fi
 
+    # Delete duplicate names
     output=$(echo "${output}" | awk -F $'\t' '!a[$1]++')
 
     if ! $full; then

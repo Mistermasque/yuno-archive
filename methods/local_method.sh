@@ -102,7 +102,7 @@ list_archives() {
     fi
 
     # Delete duplicate names
-    output=$(echo "${output}" | awk '!a[$1]++')
+    output=$(echo "${output}" | awk -F '\t' '!a[$1]++')
 
     if [[ -z "${output}" ]]; then
         return 1
@@ -215,6 +215,7 @@ delete_archive() {
         abord "name is required"
     fi
 
+    # TODO improve security for this deletion
     for file in "$LOCAL_REPO/${name}".*; do
         [[ -e "$file" ]] || continue
         if ! rm "$file"; then
