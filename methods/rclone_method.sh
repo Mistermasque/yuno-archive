@@ -122,7 +122,7 @@ list_archives() {
         rclone lsl "${RCLONE_DEST}/" --max-depth 1 --include "*.tar*" 2>/dev/null |
             awk '
             NF >= 4 {
-                # $2 = date (YYYY-MM-DD), $3 = time (HH:MM:SS[.sss]), $1 = size, $NF = filename
+                # $2 = date (YYYY-MM-DD), $3 = time (HH:MM:SS[.sss]), $1 = size, $4 -> $NF = filename
                 split($3, t, ".")
                 split($2, d, "-")
                 split(t[1], h, ":")
@@ -132,7 +132,12 @@ list_archives() {
                 } else {
                     timestamp = ""
                 }
-                print $NF "\t" $1 "\t" timestamp
+                # Get filename
+                filename = $4
+                for (i = 5; i <= NF; i++) {
+                    filename = filename " " $i
+                }
+                print filename "\t" $1 "\t" timestamp
             }' |
             sed "s/\(^[^\t]*\)\.tar[^\t]*/\1/"
     )

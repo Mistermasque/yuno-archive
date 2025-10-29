@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-YUNO_ARCHIVE="../yuno-archive.sh"
+ROOT_DIR="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" &>/dev/null && pwd)"
+YUNO_ARCHIVE="${ROOT_DIR}/yuno-archive.sh"
 
 init() {
     TMP_DIR=$(mktemp --directory)
@@ -254,6 +255,59 @@ restore_tests() {
 
 # TODO add delete test
 
+delete_tests() {
+    local method="$1"
+    local repository="$2"
+
+    local method_opts=()
+    case "$method" in
+    local)
+        method_opts=(local --repository="$repository")
+        ;;
+    rclone)
+        method_opts=(rclone --repository="$repository" --path="tests backup restore")
+        ;;
+    drive)
+        method_opts=(drive --drive="$repository" --repository="tests backup restore")
+        ;;
+    *)
+        error_msg "Unknown method: $method"
+        cleanup
+        exit 1
+        ;;
+    esac
+
+    echo -e "\n------- Creating non incremental backup...\n"
+    test_cmd $YUNO_ARCHIVE backup "${method_opts[@]}" --source="$SOURCE_DIR" --name="test ${method}" --verbose
+
+    # Check available backups
+    echo -e "\n------- Available backups after first backup:\n"
+    test_cmd $YUNO_ARCHIVE list "${method_opts[@]}" --full --human_readable
+
+    echo -e "\n------- Test initial backup...\n"
+    # Compare list backup
+    LIST=$($YUNO_ARCHIVE list "${method_opts[@]}" | sort)
+    EXPECTED_LIST="test ${method}
+test ${method} backup.base
+test ${method} backup.inc01
+test ${method} backup.inc02
+test ${method} backup.inc03"
+    test_values "$EXPECTED_LIST" "$LIST" "Initial backup list before delete"
+
+    echo -e "\n------- delete incremental backup...\n"
+    test_cmd $YUNO_ARCHIVE delete "${method_opts[@]}" --name="test ${method} backup" --verbose
+
+    # Check available backups
+    echo -e "\n------- Available backups after delete incremental backup:\n"
+    test_cmd $YUNO_ARCHIVE list "${method_opts[@]}" --full --human_readable
+
+    echo -e "\n------- Test initial backup...\n"
+    # Compare list backup
+    LIST=$($YUNO_ARCHIVE list "${method_opts[@]}" | sort)
+    EXPECTED_LIST="test ${method}"
+    test_values "$EXPECTED_LIST" "$LIST" "List after delete incremental"
+}
+
 ############################################################
 # Main script                                              #
 ############################################################
@@ -273,13 +327,17 @@ echo -e "\n======= Starting Restore Local Incremental Tests =======\n"
 
 restore_tests local "$BACKUP_DIR"
 
+echo -e "\n======= Starting Delete Local Tests =======\n"
+
+delete_tests local "$BACKUP_DIR"
+
 cleanup
 
 echo -e "\n======= Starting Backup Drive Incremental Tests =======\n"
 
 init
 
-BACKUP_DRIVE="/dev/sdb1"
+BACKUP_DRIVE="/dev/sdXX"
 
 backup_tests drive "$BACKUP_DRIVE"
 
@@ -287,18 +345,26 @@ echo -e "\n======= Starting Restore Drive Incremental Tests =======\n"
 
 restore_tests drive "$BACKUP_DRIVE"
 
+echo -e "\n======= Starting Delete Drive Tests =======\n"
+
+delete_tests drive "$BACKUP_DRIVE"
+
 cleanup
 
 echo -e "\n======= Starting Backup Rclone Incremental Tests =======\n"
 
 init
 
-BACKUP_RCLONE="pcloud-crypt"
+BACKUP_RCLONE="XXX"
 
 backup_tests rclone "$BACKUP_RCLONE"
 
 echo -e "\n======= Starting Restore Rclone Incremental Tests =======\n"
 
 restore_tests rclone "$BACKUP_RCLONE"
+
+echo -e "\n======= Starting Delete Rclone Tests =======\n"
+
+delete_tests rclone "$BACKUP_RCLONE"
 
 cleanup
