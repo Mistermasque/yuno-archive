@@ -44,7 +44,7 @@ _check_file() {
     return $?
 }
 
-# List files for a specific archive names
+# List files for a specific archive name
 # $1 archive name
 _list_files() {
     local name="$1"
@@ -402,7 +402,7 @@ fetch_archive_snapshot() {
     [[ "${LOG_VERBOSE:-false}" == "true" ]] && verbose="--verbose"
 
     if ! log_cmd rclone copy "$snapshot_file" "${destination_dir}/" ${verbose}; then
-        log "Unable to transfert '$file'" error
+        log "Unable to transfert '$snapshot_file'" error
         return 1
     fi
     # Rclone copy to a directory. We use this trick to have exact file name

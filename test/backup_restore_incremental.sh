@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ROOT_DIR="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" &>/dev/null && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && cd .. && pwd)"
 YUNO_ARCHIVE="${ROOT_DIR}/yuno-archive.sh"
 
 init() {
@@ -73,6 +73,9 @@ backup_tests() {
         ;;
     drive)
         method_opts=(drive --drive="$repository" --repository="tests backup restore")
+        ;;
+    ssh)
+        method_opts=(ssh --repository="$repository")
         ;;
     *)
         error_msg "Unknown method: $method"
@@ -164,6 +167,9 @@ restore_tests() {
         ;;
     drive)
         method_opts=(drive --drive="$repository" --repository="tests backup restore")
+        ;;
+    ssh)
+        method_opts=(ssh --repository="$repository")
         ;;
     *)
         error_msg "Unknown method: $method"
@@ -270,6 +276,9 @@ delete_tests() {
     drive)
         method_opts=(drive --drive="$repository" --repository="tests backup restore")
         ;;
+    ssh)
+        method_opts=(ssh --repository="$repository")
+        ;;
     *)
         error_msg "Unknown method: $method"
         cleanup
@@ -366,5 +375,23 @@ restore_tests rclone "$BACKUP_RCLONE"
 echo -e "\n======= Starting Delete Rclone Tests =======\n"
 
 delete_tests rclone "$BACKUP_RCLONE"
+
+cleanup
+
+echo -e "\n======= Starting Backup SSH Incremental Tests =======\n"
+
+init
+
+BACKUP_SSH="XXXXX:/tmp/test/archive repo"
+
+backup_tests ssh "$BACKUP_SSH"
+
+echo -e "\n======= Starting Restore Drive Incremental Tests =======\n"
+
+restore_tests ssh "$BACKUP_SSH"
+
+echo -e "\n======= Starting Delete Drive Tests =======\n"
+
+delete_tests ssh "$BACKUP_SSH"
 
 cleanup

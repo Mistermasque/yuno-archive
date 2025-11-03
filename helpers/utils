@@ -348,7 +348,7 @@ restore_an_archive() {
         if ! log_cmd tar --extract --file="${tar_file}" --auto-compress ${verbose_cmd} "${incremental_cmd[@]}" --directory="${destination}" .; then
             abord "Cannot restore archive '${tar_file}' !"
         fi
-        log "Archive file '${tar_file} restored" success
+        log "Archive file '${tar_file}' restored" success
     done
 
     log "Checking extracted files..." info

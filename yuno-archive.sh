@@ -495,6 +495,11 @@ do_delete() {
     load_method "$METHOD"
     init_method "${ARGS[@]}"
 
+    # Delete .base or .incX suffix to get the main archive name
+    # This command requires extglob to be enabled (shopt -s extglob)
+    # We need to delete the entire archive from base and all incrementals
+    name="${name%.@(base|inc+([0-9]))}"
+
     if ! is_archive_exists "$name"; then
         log "Archive '$name' not found'" warning
         cleanup
@@ -623,6 +628,8 @@ do_restore() {
     while read -r archive; do
         restore_an_archive "$archive" "$destination"
     done <<<"$archives_to_restore"
+
+    log "Archive '$name' restored to '$destination'" success
 
     cleanup
     return 0
