@@ -249,8 +249,12 @@ delete_archive() {
 # 	Print usage on stdout
 usage_method() {
     cat <<USAGE_METHOD
-   SSH method options :
-      -r |--repository=<destination repository> : (mandatory) repository in the format [user@]host:/absolute/directory/path
+
+SCP method use scp command to sedn archive (copy throught ssh protocol)
+You need to have a SSH server with key authentication enabled (see ssh-copy-id for more infos)
+
+SCP method options :
+    -r |--repository=<destination repository> : (mandatory) repository in the format [user@]host:/absolute/directory/path
 USAGE_METHOD
 }
 

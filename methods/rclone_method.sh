@@ -308,9 +308,13 @@ delete_archive() {
 ### FUNCTION END
 usage_method() {
     cat <<USAGE_METHOD
-   Local method options :
-      -r |--repository=<rclone repository> : (mandatory) Rclone repository without ':' at the end
-      -p |--path=<path> : Directory in rclone repository (default: /)
+
+Rclone method use rclone program to send archives.
+You need to have rclone install and configured on your system (see rclone.org)
+
+Rclone method options :
+    -r |--repository=<rclone repository> : (mandatory) Rclone repository without ':' at the end
+    -p |--path=<path> : Directory in rclone repository (default: /)
 USAGE_METHOD
 }
 

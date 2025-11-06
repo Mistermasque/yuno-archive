@@ -26,6 +26,7 @@ yuno-archive.sh <Action> <Method> [Action options] [Method options]
 - `backup` – Archive a directory and send it to a repo
 - `delete` – Remove a backup from a repo
 - `help` – Show help message (or help &lt;Method&gt; for method-specific help)
+- `info` – Get archive details infos
 - `list` – List available backups
 - `send` - Send archive from a local dir to a remote repo (send as much as possible and delete old remote archives if necessary)
 - `restore` – Restore a backup
@@ -36,6 +37,7 @@ yuno-archive.sh <Action> <Method> [Action options] [Method options]
 - `local` – Save to a local folder
 - `drive` – Save to a mounted volume (external or internal drive)
 - `rclone` – Use any backend supported by rclone (e.g. Dropbox, OneDrive, S3...)
+- `scp` – Use scp command to send archives (copy throught SSH protocol)
 
 ### General Options
 
@@ -101,11 +103,17 @@ Option|Description
 `-r`, `--repository=<rclone repository>`| **(Required)** Rclone repository without ':' at the end
 `-p`, `--path=<path>`| Directory in rclone repository (default: /)
 
+#### SCP method
+
+Option|Description
+------|-----------
+`-r`, `--repository=<destination repository>`| **(Required)** repository in the format `[user@]host:/absolute/directory/path`
+
 ### Example Usage
 
-Backup /etc/yunohost to a mounted drive with gzip compression:
+Backup /etc/yunohost to sdg2 drive on subdir /etc_backup with gzip compression:
 ```bash
-./yuno-archive.sh backup drive --source="/etc/yunohost" --compress gzip -n etc_backup -d /dev/sdg2
+./yuno-archive.sh backup drive --source="/etc/yunohost" --compress gzip -r etc_backup -d /dev/sdg2
 ```
 List local backups, newest first:
 ```bash
@@ -114,6 +122,11 @@ List local backups, newest first:
 Restore a backup from rclone to /tmp/restore:
 ```bash
 ./yuno-archive.sh restore rclone -n etc_backup -d /tmp/restore
+```
+
+Create an incremental backup with base name "data" throught scp
+```bash
+./yuno-archive.sh backup scp -n data -s "/home/data" --incremental -r "backup@192.168.1.12:/home/backups"
 ```
 
 ## Contribute
@@ -137,6 +150,7 @@ delete_archive          # Delete archive by name
 cleanup_method          # Cleanup after operations
 usage_method            # Print method-specific help
 fetch_from_dest         # Retrieve archive from destination
+fetch_archive_snapshot  # Copy snapshot file to a destination
 ```
 If any function is missing, the script will abort with an error.
 

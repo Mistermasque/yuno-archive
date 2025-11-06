@@ -236,8 +236,11 @@ delete_archive() {
 ### FUNCTION END
 usage_method() {
     cat <<USAGE_METHOD
-   Local method options :
-      -r |--repository=<destination repository> : (mandatory) Directory to store files
+
+Local method simply copy files to a local directory.
+
+Local method options :
+    -r |--repository=<destination repository> : (mandatory) Directory to store files
 USAGE_METHOD
 }
 
