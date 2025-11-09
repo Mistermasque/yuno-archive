@@ -79,6 +79,9 @@ Options :
       -s |--source=<dir> : (mandatory) Source dir or files to backup.
       -k |--keep=all|<number to keep> : (default: all) How many exisiting backup do you want to keep if thereis not enough space on dest (all: do not prune old archives, 0 can prune all archives if necessary)
 
+   Delete action options :
+      -n |--name=<archive name> : (mandatory) Archive name. It will delete this archive and all increments.
+
    List action options :
       -f |--full : Print full info about archives (size, date, name)
       -h |--human_readable : Print sizes in human readable format (eg: 1K, 234M, 2G)

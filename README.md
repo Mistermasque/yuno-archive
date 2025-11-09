@@ -129,6 +129,11 @@ Create an incremental backup with base name "data" throught scp
 ./yuno-archive.sh backup scp -n data -s "/home/data" --incremental -r "backup@192.168.1.12:/home/backups"
 ```
 
+Delete a backup name "data" and all increments stores in a scp repo
+```bash
+./yuno-archive.sh delete scp -n data -r "backup@192.168.1.12:/home/backups"
+```
+
 ## Contribute
 
 Just create pull request on develop branch.
