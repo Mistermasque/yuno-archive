@@ -107,7 +107,9 @@ Option|Description
 
 Option|Description
 ------|-----------
+`-p`, `--port=<port>`| Define port number for ssh connection (default: 22)
 `-r`, `--repository=<destination repository>`| **(Required)** repository in the format `[user@]host:/absolute/directory/path`
+
 
 ### Example Usage
 
