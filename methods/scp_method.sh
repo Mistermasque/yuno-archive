@@ -7,6 +7,8 @@
 
 # Destination Host and user setted in init_method
 SSH_HOST=""
+# SSH port setted in init_method (default 22)
+SSH_PORT=22
 # Absolute destination dir setted in init_method without trailing slashed
 SSH_DIR=""
 # Correspond to SSH_HOST:SSH_DIR setted in init_method
@@ -23,13 +25,13 @@ _check_init() {
 
 # Send ssh command
 _ssh_cmd() {
-    ssh -o BatchMode=yes "$SSH_HOST" "$@"
+    ssh -o BatchMode=yes -p "$SSH_PORT" "$SSH_HOST" "$@"
     return $?
 }
 
 # Send ssh command and log it
 _ssh_log_cmd() {
-    log_cmd ssh -o BatchMode=yes "$SSH_HOST" "$@"
+    log_cmd ssh -o BatchMode=yes -p "$SSH_PORT" "$SSH_HOST" "$@"
     return $?
 }
 
@@ -37,8 +39,9 @@ _ssh_log_cmd() {
 # Get script args to set global variable for this method
 init_method() {
     # shellcheck disable=SC2034
-    local -A args_array=([r]=repository=)
+    local -A args_array=([r]=repository= [p]=port=)
     local repository=""
+    local port=""
     handle_getopts_args "$@"
 
     if [[ -z "$repository" ]]; then
@@ -47,6 +50,14 @@ init_method() {
 
     if [[ ! "$repository" =~ ^([a-zA-Z0-9._-]+@)?[a-zA-Z0-9._-]+:.+ ]]; then
         abord "Repository '$repository' is not a valid ssh repository format ([user@]host:/directory)"
+    fi
+
+    # Set SSH port if provided
+    if [[ -n "$port" ]]; then
+        if ! [[ "$port" =~ ^[0-9]+$ ]] || [[ $port -lt 1 || $port -gt 65535 ]]; then
+            abord "Invalid port number '$port' (must be between 1 and 65535)"
+        fi
+        SSH_PORT=$port
     fi
 
     # Extract part before :/ to get hostpart
@@ -59,7 +70,7 @@ init_method() {
     fi
 
     # Check SSH connection (without password prompt and short timeout)
-    if ! ssh -o BatchMode=yes -o ConnectTimeout=5 "$SSH_HOST" true 2>/dev/null; then
+    if ! ssh -o BatchMode=yes -p "$SSH_PORT" -o ConnectTimeout=5 "$SSH_HOST" true 2>/dev/null; then
         abord "Cannot connect to '$SSH_HOST' did you configure a SSH key for this host ?"
     fi
 
@@ -81,7 +92,7 @@ init_method() {
 get_available_space() {
     _check_init
 
-    ssh -o BatchMode=yes "$SSH_HOST" "findmnt --target \"$SSH_DIR\" --output AVAIL --bytes --noheadings --first-only"
+    ssh -o BatchMode=yes -p "$SSH_PORT" "$SSH_HOST" "findmnt --target \"$SSH_DIR\" --output AVAIL --bytes --noheadings --first-only"
 }
 
 # List available archives names stored in destination
@@ -193,7 +204,7 @@ send_to_dest() {
 
     local -a transfered_files=()
     for file in "${FILES_TO_TRANSFERT[@]}"; do
-        if ! log_cmd scp "$file" "${SSH_REPO}/"; then
+        if ! log_cmd scp -P "$SSH_PORT" "$file" "${SSH_REPO}/"; then
             log "Unable to transfert '$file'" error
             for file_to_delete in "${transfered_files[@]}"; do
                 log "Delete transfered file '$file_to_delete'" verbose
@@ -250,11 +261,12 @@ delete_archive() {
 usage_method() {
     cat <<USAGE_METHOD
 
-SCP method use scp command to sedn archive (copy throught ssh protocol)
+SCP method use scp command to send archive (copy through ssh protocol)
 You need to have a SSH server with key authentication enabled (see ssh-copy-id for more infos)
 
 SCP method options :
     -r |--repository=<destination repository> : (mandatory) repository in the format [user@]host:/absolute/directory/path
+    -p |--port=<port number> : (optional) SSH port number (default: 22)
 USAGE_METHOD
 }
 
@@ -289,7 +301,7 @@ fetch_from_dest() {
         abord "Destination '$destination' doesn't exists or inaccessible"
     fi
 
-    if ! log_cmd scp "${SSH_REPO}/${name}.*" "${destination}/"; then
+    if ! log_cmd scp -P "$SSH_PORT" "${SSH_REPO}/${name}.*" "${destination}/"; then
         log "Unable to transfert files" error
         return 1
     fi
@@ -321,7 +333,7 @@ fetch_archive_snapshot() {
     local snapshot_file
     snapshot_file="${SSH_DIR}/${archive_name}.snar"
 
-    if ! log_cmd scp "$SSH_HOST:${snapshot_file}" "${destination_path}"; then
+    if ! log_cmd scp -P "$SSH_PORT" "$SSH_HOST:${snapshot_file}" "${destination_path}"; then
         log "Unable to transfert '$snapshot_file'" error
         return 1
     fi
