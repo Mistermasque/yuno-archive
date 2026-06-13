@@ -54,9 +54,10 @@ Option|Description
 `-c`, `--compress=<type>`| Compression type: `gzip`, `bzip2`, `xz` (if type not set, use gzip)
 `-C`, `--check_size` | Check if there is enough space in temp dir to create archive (compare source size to available space in root temp dir)
 `-i`, `--info=<file>`| Attach additional file(s) (space-separated)
-`-n`, `--name=<archive name>`|Archive name (default: current datetime)
+`-m`, `--min=<number>`| Minimum number of existing backups to keep when pruning due to lack of space (default: `all`)
+`-M`, `--max=<number>`| Maximum number of backups to keep. If exceeded, older archives are deleted (default: `all`, minimum value: `1`)
+`-n`, `--name=<archive name>`| Archive name (default: current datetime)
 `-s`, `--source=<dir>`| **(Required)** Source directory or files to back up
-`-k`, `--keep=<number>`| How many backups to keep (default: all). Set value to `all` if you don't want to delete any old archive.
 
 ### List Options
 
