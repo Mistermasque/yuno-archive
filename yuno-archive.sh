@@ -75,10 +75,11 @@ Options :
       -h |--hook=<script file> : Execute this script file before and after doing backup
       -i |--info=<info file> : Additionnal file to send with archive (sent unaltered). Possibility to add multiple files separated by spaces
       -I |--incremental : Create an incremental backup
+      -m |--min=all|<number to keep> : (default: all) Minimum number of exisiting backups to keep when pruning due to lack of space (all: do not prune old archives, 0 can prune all archives if necessary)
+      -M |--max=all|<number to keep> : (default: all) Maximum number of archives to keep. If number of archives exceeds this, older archives will be deleted (all: do not limit number of archives, minimum value is 1)
       -n |--name=<archive name> : Archive name. If not set, use datetime. If incremental is used, this name correspond to the full backup
       -s |--source=<dir> : (mandatory) Source dir or files to backup.
-      -k |--keep=all|<number to keep> : (default: all) How many exisiting backup do you want to keep if thereis not enough space on dest (all: do not prune old archives, 0 can prune all archives if necessary)
-
+      
    Delete action options :
       -n |--name=<archive name> : (mandatory) Archive name. It will delete this archive and all increments.
 
@@ -175,24 +176,26 @@ load_method() {
 # Check if there is sufficent space on device to store archive
 # Delete old archive if not
 # ARGUMENTS:
-# 	$1 (integer) archive size (this size should be lower than available space on disk)
+#   $1 (integer) archive size (this size should be lower than available space on disk)
 #   $2 (integer) min number of archives to keep.
 # RETURN:
 # 	0 if thereis sufficent space to store archive size (after prune), 1 otherwise
 ### FUNCTION END
 check_space_and_prune_old_archives() {
-    local -A args_array=([s]=space= [k]=keep=)
-    local space=0
-    local keep=0
-    handle_getopts_args "$@"
+    local space="$1"
+    local min="$2"
 
-    if echo "$space" | grep -qv "^[0-9][0-9]*$"; then
+    if [[ ! $min =~ ^[0-9]+$ ]]; then
+        abord "check_space_and_prune_old_archives : min parameter '$min' is not an integer"
+    fi
+
+    if [[ ! $space =~ ^[0-9]+$ ]]; then
         abord "check_space_and_prune_old_archives : Archive size '$space' is not an integer"
     fi
 
     local availableSpace
     availableSpace=$(get_available_space)
-    if echo "$availableSpace" | grep -qv "^[0-9][0-9]*$"; then
+    if [[ ! $availableSpace =~ ^[0-9]+$ ]]; then
         abord "check_space_and_prune_old_archives : Cannot determine available space on destination ('$availableSpace' is not an integer)"
     fi
     if [[ $availableSpace -gt $space ]]; then
@@ -206,8 +209,8 @@ check_space_and_prune_old_archives() {
 
     for archive in $archives; do
         backupsCount=$(count_archives)
-        if [[ $backupsCount -le $keep ]]; then
-            log "Cannot delete more archives (number to keep = ${keep}, archives number = ${backupsCount})." "error"
+        if [[ $backupsCount -le $min ]]; then
+            log "Cannot delete more archives (number to keep = ${min}, archives number = ${backupsCount})." "error"
             return 1
         fi
 
@@ -232,13 +235,72 @@ check_space_and_prune_old_archives() {
     return 1
 }
 
+### FUNCTION BEGIN
+# Prune old archives to keep only max number of archives
+# ARGUMENTS:
+#   $1 (integer) max number of archives to keep
+# RETURN:
+# 	0 always
+### FUNCTION END
+prune_old_archives_by_max() {
+    local max=$1
+
+    if [[ ! $max =~ ^[0-9]+$ ]]; then
+        abord "prune_old_archives_by_max : max parameter '$max' is not an integer"
+    fi
+
+    if [[ $max -lt 1 ]]; then
+        abord "prune_old_archives_by_max : max parameter '$max' must be >= 1"
+    fi
+
+    local archiveCount
+    archiveCount=$(count_archives)
+
+    if [[ $archiveCount -le $max ]]; then
+        log "Number of archives ($archiveCount) is within max limit ($max)" verbose
+        return 0
+    fi
+
+    log "Number of archives ($archiveCount) exceeds max limit ($max). Deleting oldest archives..." verbose
+
+    local archives
+    archives=$(list_archives olderfirst)
+
+    local toDelete=$((archiveCount - max))
+    local deleted=0
+
+    for archive in $archives; do
+        if [[ $deleted -ge $toDelete ]]; then
+            break
+        fi
+
+        log "Deleting old archive '${archive}' to respect max limit..."
+        if ! delete_archive --name="$archive"; then
+            log "Error deleting archive ${archive}" error
+            continue
+        else
+            log "Archive ${archive} deleted"
+            deleted=$((deleted + 1))
+        fi
+    done
+
+    if [[ $deleted -eq $toDelete ]]; then
+        log "Successfully pruned $deleted archives to respect max limit" success
+        return 0
+    else
+        log "Warning: could only delete $deleted of $toDelete archives" warning
+        return 0
+    fi
+}
+
 do_backup() {
-    local -A args_array=([n]=name= [s]=source= [c]=compress= [k]=keep= [i]=info= [C]=check_size [h]=hook= [I]=incremental)
+    local -A args_array=([n]=name= [s]=source= [c]=compress= [m]=min= [M]=max= [i]=info= [C]=check_size [h]=hook= [I]=incremental)
     local name
     name=$(date "+%Y-%m-%d_%H-%M-%S")
     local source=""
     local compress=false
-    local keep="all"
+    local min="all"
+    local max="all"
     local info=""
     local check_size=""
     local hook=""
@@ -291,8 +353,14 @@ do_backup() {
         esac
     fi
 
-    if [[ $keep != "all" && ! $keep =~ ^[0-9]+$ ]]; then
-        log "Invalid keep value '${keep}'" error
+    if [[ $min != "all" && ! $min =~ ^[0-9]+$ ]]; then
+        log "Invalid min value '${min}'" error
+        usage
+        exit 1
+    fi
+
+    if [[ $max != "all" && ! $max =~ ^[0-9]+$ && $max -lt 1 ]]; then
+        log "Invalid max value '${max}' (all or integer >= 1 expected)" error
         usage
         exit 1
     fi
@@ -459,11 +527,11 @@ do_backup() {
     FILES_TO_TRANSFERT+=("$md5_file")
 
     # Check space and prune old archive if possible
-    if [[ $keep != "all" ]]; then
+    if [[ $min != "all" ]]; then
         log "Check space and prune old archives..."
         local tar_size
         tar_size=$(du --byte "${tar_file}" | cut -f1)
-        if ! check_space_and_prune_old_archives --space="$tar_size" --keep=$keep; then
+        if ! check_space_and_prune_old_archives "$tar_size" "$min"; then
             abord "We cannot proceed due to a lack of space in destination"
         fi
         log "There is enough space to store new archive" success
@@ -476,6 +544,12 @@ do_backup() {
     fi
 
     log "Archive '$name' files sent" success
+
+    # Prune old archives if max is set
+    if [[ $max != "all" ]]; then
+        log "Prune old archives to respect max limit..."
+        prune_old_archives_by_max "$max"
+    fi
 
     cleanup
     log "End backup '$METHOD'" info
@@ -713,7 +787,7 @@ do_send() {
         fi
 
         log "Check space and prune old archives..."
-        if ! check_space_and_prune_old_archives --space="$size" --keep=$keep; then
+        if ! check_space_and_prune_old_archives "$size" "$keep"; then
             cannot_send=true
             log "We cannot proceed due to a lack of space in destination" warning
             # We continue because we want to send as much as possible archives
