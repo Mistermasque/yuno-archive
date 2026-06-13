@@ -885,6 +885,14 @@ else
     declare -r METHOD=""
 fi
 
+# Check if Method is valid
+if [[ ! ${METHODS[*]} =~ ${METHOD} ]]; then
+    log "Unknown method '$METHOD'" error
+    cleanup
+    usage
+    exit 1
+fi
+
 declare -ra ARGS=("$@")
 
 # Trap interruption to quit properly
