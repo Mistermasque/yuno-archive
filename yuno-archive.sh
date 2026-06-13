@@ -485,7 +485,7 @@ do_backup() {
     local tar_file="${TMP_DIR}/${name}${incremental_part_name}.tar${compress_extension}"
     local verbose_cmd=""
     [[ "${LOG_VERBOSE:-false}" == "true" ]] && verbose_cmd="--verbose"
-    if ! log_cmd tar --create --file="${tar_file}" ${compress_cmd} ${verbose_cmd} "${incremental_cmd[@]}" --directory="${source}" .; then
+    if ! log_cmd tar --create --ignore-failed-read --file="${tar_file}" ${compress_cmd} ${verbose_cmd} "${incremental_cmd[@]}" --directory="${source}" .; then
         abord "Cannot create archive '${tar_file}' !"
     fi
 
