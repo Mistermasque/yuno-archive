@@ -485,8 +485,14 @@ do_backup() {
     local tar_file="${TMP_DIR}/${name}${incremental_part_name}.tar${compress_extension}"
     local verbose_cmd=""
     [[ "${LOG_VERBOSE:-false}" == "true" ]] && verbose_cmd="--verbose"
-    if ! log_cmd tar --create --ignore-failed-read --file="${tar_file}" ${compress_cmd} ${verbose_cmd} "${incremental_cmd[@]}" --directory="${source}" .; then
+    local tar_exit_code=0
+    log_cmd tar --create --ignore-failed-read --file="${tar_file}" ${compress_cmd} ${verbose_cmd} "${incremental_cmd[@]}" --directory="${source}" . || tar_exit_code=$?
+    if [[ $tar_exit_code -gt 1 ]]; then
         abord "Cannot create archive '${tar_file}' !"
+    fi
+
+    if [[ $tar_exit_code -eq 1 ]]; then
+        log "tar returned warnings while creating '${tar_file}' (for example: files changed during read). Continuing backup." warning
     fi
 
     # Check compression
